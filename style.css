@@ -208,6 +208,18 @@ article blockquote {
   color: var(--ink-soft); font-style: italic;
 }
 
+/* 图：可比正文列宽，但绝不超出视口。深色下压一点亮度，白底图才不刺眼 */
+article img {
+  display: block; height: auto;
+  max-width: min(42rem, 100%);
+  margin: 1.75rem 0;
+  border: 1px solid var(--rule); border-radius: 3px;
+  background: oklch(99% 0 0);
+}
+@media (prefers-color-scheme: dark) { article img { filter: brightness(0.9); } }
+:root[data-theme="dark"]  article img { filter: brightness(0.9); }
+:root[data-theme="light"] article img { filter: none; }
+
 /* 代码：正文行长放不下，允许溢出到更宽的容器并自己横向滚动 */
 article pre {
   max-width: min(52rem, 100%);
