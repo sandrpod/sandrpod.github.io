@@ -2,21 +2,21 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>SandrPod</title>
-    <link>https://sandrpod.com/</link>
-    <atom:link href="https://sandrpod.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <link>https://blog.sandrpod.com/</link>
+    <atom:link href="https://blog.sandrpod.com/feed.xml" rel="self" type="application/rss+xml"/>
     <description>Self-hosted execution infrastructure for AI agents.</description>
     <language>en</language>
     <item>
       <title>Self-hosting an E2B-compatible sandbox stack, from an empty server</title>
-      <link>https://sandrpod.com/e2b-compatible-sandbox-api/</link>
-      <guid isPermaLink="true">https://sandrpod.com/e2b-compatible-sandbox-api/</guid>
+      <link>https://blog.sandrpod.com/e2b-compatible-sandbox-api/</link>
+      <guid isPermaLink="true">https://blog.sandrpod.com/e2b-compatible-sandbox-api/</guid>
       <pubDate>Thu, 06 Aug 2026 09:00:00 +0000</pubDate>
       <description>One VM, one domain, four containers — then the unmodified E2B SDK talking to infrastructure you own, checked feature by feature.</description>
     </item>
     <item>
       <title>Two ways to give a deepagents agent a sandbox you own</title>
-      <link>https://sandrpod.com/deepagents-sandbox-backends/</link>
-      <guid isPermaLink="true">https://sandrpod.com/deepagents-sandbox-backends/</guid>
+      <link>https://blog.sandrpod.com/deepagents-sandbox-backends/</link>
+      <guid isPermaLink="true">https://blog.sandrpod.com/deepagents-sandbox-backends/</guid>
       <pubDate>Thu, 06 Aug 2026 09:30:00 +0000</pubDate>
       <description>langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found three defects.</description>
     </item>
