@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SandrPod — self-hosted execution infrastructure for AI agents</title>
+<meta name="description" content="Open-source, Apache-2.0. Run AI-agent code on infrastructure you own: any cloud, plain Docker, or a bare machine. E2B-SDK compatible.">
+<link rel="canonical" href="https://sandrpod.com/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="SandrPod — self-hosted execution infrastructure for AI agents">
+<meta property="og:description" content="Open-source, Apache-2.0. Run AI-agent code on infrastructure you own: any cloud, plain Docker, or a bare machine. E2B-SDK compatible.">
+<meta property="og:url" content="https://sandrpod.com/">
+<meta property="og:site_name" content="SandrPod">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SandrPod — self-hosted execution infrastructure for AI agents">
+<meta name="twitter:description" content="Open-source, Apache-2.0. Run AI-agent code on infrastructure you own: any cloud, plain Docker, or a bare machine. E2B-SDK compatible.">
+<link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://sandrpod.com/feed.xml">
+<link rel="stylesheet" href="/style.css">
+<script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead">
+  <a class="wordmark" href="/">SandrPod</a>
+  <nav aria-label="Main">
+    <a href="/">Writing</a>
+    <a href="https://github.com/sandrpod/sandrpod">GitHub</a>
+    <button class="theme-toggle" type="button" aria-label="Toggle colour theme">Dark</button>
+  </nav>
+</header>
+<main id="main">
+<section class="hero">
+  <h1>Run your agents’ code on <em>your own</em> infrastructure.</h1>
+  <p>SandrPod turns a server you control — any cloud, plain Docker, or a bare
+  machine — into on-demand sandboxes. Speak its native API, or point the
+  unmodified E2B SDK at it. Nothing dials in; workers dial out.</p>
+  <p class="cta">
+    <a href="https://github.com/sandrpod/sandrpod">github.com/sandrpod/sandrpod</a>
+    <span>·</span>
+    <a href="https://github.com/sandrpod/sandrpod/blob/main/docs/PRODUCTION_DEPLOYMENT.md">Deployment guide</a>
+  </p>
+</section>
+
+<h2 class="writing-head">Writing</h2>
+<a class="entry" href="/e2b-compatible-sandbox-api/">
+  <div class="meta"><span class="no">01</span>2026-08-06</div>
+  <div>
+    <h2>Self-hosting an E2B-compatible sandbox stack, from an empty server<span class="arrow">→</span></h2>
+    <p>One VM, one domain, four containers. At the end, the unmodified E2B SDK is talking to infrastructure you own — and we check it feature by feature.</p>
+  </div>
+</a>
+<a class="entry" href="/deepagents-sandbox-backends/">
+  <div class="meta"><span class="no">02</span>2026-08-06</div>
+  <div>
+    <h2>Two ways to give a deepagents agent a sandbox you own<span class="arrow">→</span></h2>
+    <p>Both work. Testing both is what found the bugs.</p>
+  </div>
+</a>
+</main>
+<footer>
+  <span>SandrPod — self-hosted execution infrastructure for AI agents</span>
+  <a href="https://github.com/sandrpod/sandrpod">Source</a>
+  <a href="https://sandrpod.com/feed.xml">RSS</a>
+  <span>Apache-2.0</span>
+</footer>
+<script>
+(function () {
+  var btn = document.querySelector('.theme-toggle');
+  if (!btn) return;
+  var root = document.documentElement;
+  function current() {
+    return root.getAttribute('data-theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+  function label() { btn.textContent = current() === 'dark' ? 'Light' : 'Dark'; }
+  label();
+  btn.addEventListener('click', function () {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    label();
+  });
+})();
+</script>
+</body>
+</html>

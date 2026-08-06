@@ -1,0 +1,276 @@
+:root {
+  /* 纸与墨：暖白底、近黑字，避免纯 #fff/#000 的刺眼对比 */
+  --paper:      oklch(98.2% 0.004 85);
+  --paper-sunk: oklch(95.6% 0.006 85);
+  --ink:        oklch(21%   0.012 60);
+  --ink-soft:   oklch(46%   0.012 60);
+  --ink-faint:  oklch(64%   0.010 60);
+  --rule:       oklch(88%   0.008 70);
+  /* 单一强调色：赭红。够暖，不是通用的 SaaS 蓝 */
+  --accent:     oklch(52%   0.155 42);
+  --accent-lit: oklch(96%   0.020 42);
+
+  --serif: "Iowan Old Style", "Charter", "Bitstream Charter", "Sitka Text",
+           Cambria, Georgia, serif;
+  --sans:  ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+  --mono:  ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --measure: 34rem;          /* 正文行长，约 68 字符 */
+  --gutter:  clamp(1.25rem, 1rem + 2vw, 3rem);
+  --step:    clamp(3rem, 2rem + 4vw, 6rem);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:      oklch(17%   0.010 65);
+    --paper-sunk: oklch(21%   0.012 65);
+    --ink:        oklch(92%   0.008 80);
+    --ink-soft:   oklch(72%   0.010 80);
+    --ink-faint:  oklch(55%   0.010 80);
+    --rule:       oklch(31%   0.012 70);
+    --accent:     oklch(76%   0.135 55);
+    --accent-lit: oklch(26%   0.040 45);
+  }
+}
+/* 站内切换按钮的显式覆盖，两个方向都要压过媒体查询 */
+:root[data-theme="light"] {
+  --paper: oklch(98.2% 0.004 85); --paper-sunk: oklch(95.6% 0.006 85);
+  --ink: oklch(21% 0.012 60);     --ink-soft: oklch(46% 0.012 60);
+  --ink-faint: oklch(64% 0.010 60); --rule: oklch(88% 0.008 70);
+  --accent: oklch(52% 0.155 42);  --accent-lit: oklch(96% 0.020 42);
+}
+:root[data-theme="dark"] {
+  --paper: oklch(17% 0.010 65);   --paper-sunk: oklch(21% 0.012 65);
+  --ink: oklch(92% 0.008 80);     --ink-soft: oklch(72% 0.010 80);
+  --ink-faint: oklch(55% 0.010 80); --rule: oklch(31% 0.012 70);
+  --accent: oklch(76% 0.135 55);  --accent-lit: oklch(26% 0.040 45);
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: 0 var(--gutter);
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.0625rem/1.72 var(--serif);
+  font-synthesis-weight: none;
+  overflow-wrap: break-word;
+}
+
+/* ── 骨架 ───────────────────────────────────────────────── */
+
+.masthead {
+  max-width: 62rem; margin: 0 auto;
+  display: flex; align-items: baseline; gap: 1.25rem;
+  padding: 2rem 0 0; border-bottom: 1px solid var(--rule);
+  padding-bottom: 1rem;
+}
+.masthead a.wordmark {
+  font: 600 0.9375rem/1 var(--sans);
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink); text-decoration: none;
+}
+.masthead nav { margin-left: auto; display: flex; gap: 1.25rem; align-items: baseline; }
+.masthead nav a, .theme-toggle {
+  font: 400 0.875rem/1 var(--sans);
+  color: var(--ink-soft); text-decoration: none;
+}
+.masthead nav a:hover { color: var(--accent); }
+.theme-toggle {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: var(--sans); color: var(--ink-soft);
+}
+.theme-toggle:hover { color: var(--accent); }
+
+main { max-width: 62rem; margin: 0 auto; }
+
+footer {
+  max-width: 62rem; margin: var(--step) auto 0;
+  border-top: 1px solid var(--rule); padding: 1.5rem 0 3rem;
+  font: 400 0.875rem/1.6 var(--sans); color: var(--ink-faint);
+  display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem;
+}
+footer a { color: var(--ink-soft); text-decoration: none; }
+footer a:hover { color: var(--accent); }
+
+/* ── 首页 ───────────────────────────────────────────────── */
+
+.hero { padding: var(--step) 0; max-width: 44rem; }
+.hero h1 {
+  font: 400 clamp(2.5rem, 1.4rem + 4.4vw, 5rem)/1.02 var(--serif);
+  letter-spacing: -0.025em; margin: 0 0 1.25rem;
+}
+.hero h1 em { font-style: italic; color: var(--accent); }
+.hero p {
+  font-size: 1.1875rem; color: var(--ink-soft);
+  max-width: var(--measure); margin: 0 0 1.75rem;
+}
+.hero .cta { font-family: var(--sans); font-size: 0.9375rem; }
+.hero .cta a {
+  color: var(--ink); text-decoration: none;
+  border-bottom: 2px solid var(--accent); padding-bottom: 1px;
+}
+.hero .cta a:hover { color: var(--accent); }
+.hero .cta span { color: var(--ink-faint); margin: 0 0.75rem; }
+
+.writing-head {
+  font: 600 0.8125rem/1 var(--sans);
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-faint);
+  border-top: 1px solid var(--rule); padding-top: 1.25rem; margin-bottom: 0;
+}
+
+/* 编辑式条目：日期在左侧边栏，标题破格占主栏 */
+.entry {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0 2.5rem;
+  padding: 2.25rem 0;
+  border-bottom: 1px solid var(--rule);
+  text-decoration: none; color: inherit;
+}
+.entry:hover h2 { color: var(--accent); }
+.entry:hover .arrow { transform: translateX(3px); opacity: 1; }
+.entry .meta {
+  font: 400 0.8125rem/1.5 var(--sans);
+  color: var(--ink-faint); padding-top: 0.55rem;
+}
+.entry .meta .no {
+  display: block; font-size: 1.75rem; line-height: 1;
+  color: var(--rule); margin-bottom: 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+.entry h2 {
+  font: 400 clamp(1.5rem, 1.1rem + 1.5vw, 2.125rem)/1.18 var(--serif);
+  letter-spacing: -0.015em; margin: 0 0 0.6rem;
+  transition: color 140ms ease;
+}
+.entry p { margin: 0; color: var(--ink-soft); max-width: var(--measure); }
+.entry .arrow {
+  display: inline-block; margin-left: 0.4rem; color: var(--accent);
+  opacity: 0.55; transition: transform 140ms ease, opacity 140ms ease;
+}
+
+@media (max-width: 44rem) {
+  .entry { grid-template-columns: 1fr; gap: 0.75rem; }
+  .entry .meta { padding-top: 0; }
+  .entry .meta .no { display: inline; font-size: 1rem; margin-right: 0.6rem; }
+}
+
+/* ── 文章 ───────────────────────────────────────────────── */
+
+article { padding: var(--step) 0 0; }
+article > * { max-width: var(--measure); }
+
+article h1 {
+  font: 400 clamp(2.125rem, 1.4rem + 3vw, 3.5rem)/1.08 var(--serif);
+  letter-spacing: -0.022em; margin: 0 0 1.5rem; max-width: 24ch;
+}
+/* pandoc 把副标题渲染成首个 <p><em> */
+article h1 + p em {
+  font-style: italic; font-size: 1.1875rem;
+  color: var(--ink-soft); line-height: 1.55;
+}
+article h1 + p { margin-bottom: 2.5rem; }
+
+article h2 {
+  font: 600 1.0625rem/1.35 var(--sans);
+  letter-spacing: 0.02em;
+  margin: 3.25rem 0 1rem; padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+}
+article h3 {
+  font: 600 0.9375rem/1.4 var(--sans);
+  letter-spacing: 0.03em; color: var(--ink-soft);
+  margin: 2.25rem 0 0.75rem;
+}
+article h2 a.anchor, article h3 a.anchor { display: none; }
+
+article p, article li { margin: 0 0 1.25rem; }
+article ul, article ol { padding-left: 1.35rem; }
+article li { margin-bottom: 0.5rem; }
+article li::marker { color: var(--ink-faint); }
+
+article a { color: var(--ink); text-decoration-color: var(--accent); text-underline-offset: 2px; }
+article a:hover { color: var(--accent); }
+
+article strong { font-weight: 600; }
+
+article hr {
+  border: 0; border-top: 1px solid var(--rule);
+  margin: 2.5rem 0; max-width: 6rem;
+}
+
+article blockquote {
+  margin: 1.75rem 0; padding-left: 1.25rem;
+  border-left: 2px solid var(--accent);
+  color: var(--ink-soft); font-style: italic;
+}
+
+/* 代码：正文行长放不下，允许溢出到更宽的容器并自己横向滚动 */
+article pre {
+  max-width: min(52rem, 100%);
+  margin: 1.75rem 0; padding: 1.1rem 1.25rem;
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule); border-radius: 3px;
+  overflow-x: auto;
+  font: 400 0.8125rem/1.62 var(--mono);
+  -webkit-overflow-scrolling: touch;
+}
+article pre code { background: none; padding: 0; font-size: inherit; border: 0; }
+article code {
+  font: 400 0.86em/1.4 var(--mono);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule); border-radius: 2px;
+  padding: 0.1em 0.32em;
+}
+
+/* 表格同理：可以比正文宽，超出就滚 */
+article table {
+  max-width: min(52rem, 100%);
+  display: block; overflow-x: auto;
+  border-collapse: collapse;
+  margin: 1.75rem 0;
+  font: 400 0.9375rem/1.5 var(--sans);
+}
+article thead th {
+  text-align: left; font-weight: 600; white-space: nowrap;
+  border-bottom: 1.5px solid var(--ink-soft);
+  padding: 0.5rem 1rem 0.5rem 0;
+}
+article tbody td {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.6rem 1rem 0.6rem 0;
+  vertical-align: top;
+}
+article tbody tr:last-child td { border-bottom: 0; }
+article td code { font-size: 0.86em; }
+
+.article-foot {
+  margin-top: var(--step); padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+  font: 400 0.9375rem/1.6 var(--sans); color: var(--ink-soft);
+}
+.article-foot a { color: var(--ink); text-decoration-color: var(--accent); }
+
+/* ── 可访问性 ───────────────────────────────────────────── */
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+.skip {
+  position: absolute; left: -9999px;
+  background: var(--paper); color: var(--ink);
+  padding: 0.6rem 1rem; border: 1px solid var(--accent); z-index: 10;
+}
+.skip:focus { left: var(--gutter); top: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  .masthead nav, footer, .theme-toggle { display: none; }
+  body { background: #fff; color: #000; }
+  article pre, article table { max-width: 100%; }
+}

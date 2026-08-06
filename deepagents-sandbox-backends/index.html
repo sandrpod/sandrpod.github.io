@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two ways to give a deepagents agent a sandbox you own — SandrPod</title>
+<meta name="description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found three defects.">
+<link rel="canonical" href="https://sandrpod.com/deepagents-sandbox-backends/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Two ways to give a deepagents agent a sandbox you own — SandrPod">
+<meta property="og:description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found three defects.">
+<meta property="og:url" content="https://sandrpod.com/deepagents-sandbox-backends/">
+<meta property="og:site_name" content="SandrPod">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Two ways to give a deepagents agent a sandbox you own — SandrPod">
+<meta name="twitter:description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found three defects.">
+<link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://sandrpod.com/feed.xml">
+<link rel="stylesheet" href="/style.css">
+<script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead">
+  <a class="wordmark" href="/">SandrPod</a>
+  <nav aria-label="Main">
+    <a href="/">Writing</a>
+    <a href="https://github.com/sandrpod/sandrpod">GitHub</a>
+    <button class="theme-toggle" type="button" aria-label="Toggle colour theme">Dark</button>
+  </nav>
+</header>
+<main id="main">
+<article>
+<h1 id="two-ways-to-give-a-deepagents-agent-a-sandbox-you-own">Two ways
+to give a deepagents agent a sandbox you own</h1>
+<p><em>Both work. Testing both is what found the bugs.</em></p>
+<hr />
+<p><a href="https://github.com/langchain-ai/deepagents">deepagents</a>
+hands your agent a filesystem and a shell through a <code>backend</code>
+object. Swap the backend and the same agent runs somewhere else — your
+process, a container, someone's cloud.</p>
+<p>If that somewhere else should be <strong>your</strong>
+infrastructure, and you are running <a
+href="https://github.com/sandrpod/sandrpod">SandrPod</a> for it, there
+are two ways in:</p>
+<ul>
+<li><strong><code>langchain-e2b</code></strong> — E2B's own deepagents
+backend. It wraps an <code>e2b.Sandbox</code>, and an
+<code>e2b.Sandbox</code> will talk to SandrPod when you point
+<code>E2B_DOMAIN</code> at it.</li>
+<li><strong><code>langchain-sandrpod</code></strong> — SandrPod's own,
+against the native API.</li>
+</ul>
+<p>This is a comparison of the two, run against a live deployment: the
+same twelve backend assertions down each path, then the same agent given
+the same job three times each. Both routes pass everything. What made
+the exercise worth doing is what it turned up along the way — three
+defects, two of them silent, and one of those was mine to fix rather
+than theirs.</p>
+<p>Versions throughout: <code>deepagents</code> 0.6.12,
+<code>langchain-e2b</code> 0.0.6, <code>langchain-sandrpod</code> 0.2.7,
+SandrPod v0.5.3 — the version these numbers were measured against.
+v0.5.4 and v0.5.5 followed with resource-leak fixes, neither of which
+changes any behaviour measured here.</p>
+<hr />
+<h2 id="the-two-wirings">The two wirings</h2>
+<p><strong>Route 1 — through E2B's backend.</strong> You build a normal
+<code>e2b.Sandbox</code>, which lands on SandrPod because
+<code>E2B_DOMAIN</code> says so, then wrap it:</p>
+<pre class="python"><code>from e2b import Sandbox
+from langchain_e2b import E2BSandbox
+
+# E2B_DOMAIN=your-domain  E2B_API_KEY=e2b_…
+sbx = Sandbox.create()
+backend = E2BSandbox(sandbox=sbx, workdir=&quot;/workspace&quot;)</code></pre>
+<p>That <code>workdir</code> is not optional. <code>langchain-e2b</code>
+defaults to <code>/home/user</code>, which is E2B's image convention;
+SandrPod's is <code>/workspace</code>, and <code>/home/user</code> does
+not exist there. More on what that used to look like below.</p>
+<p><strong>Route 2 — through SandrPod's own.</strong></p>
+<pre class="python"><code>from langchain_sandrpod import SandrPodClient
+
+# SANDRPOD_API_URL=https://api.your-domain  SANDRPOD_API_TOKEN=…
+client = SandrPodClient()
+backend = client.create_sandbox(&quot;agent-42&quot;)</code></pre>
+<p>Either way you hand the result to the agent unchanged:</p>
+<pre class="python"><code>from deepagents import create_deep_agent
+
+agent = create_deep_agent(model=model, backend=backend)</code></pre>
+<p><strong>They coexist.</strong> Both packages install into one
+virtualenv on deepagents 0.6.12 with <code>pip check</code> clean —
+worth saying because their declared windows differ
+(<code>langchain-e2b</code> pins <code>&gt;=0.6.0,&lt;0.7.0</code>,
+<code>langchain-sandrpod</code> allows
+<code>&gt;=0.5.0,&lt;0.8.0</code>), which reads like a conflict waiting
+to happen and is not one.</p>
+<hr />
+<h2 id="twelve-assertions-twice">Twelve assertions, twice</h2>
+<p>Both implement all 24 methods of
+<code>deepagents.backends.sandbox.BaseSandbox</code>, so the interesting
+question is not "does it typecheck" but "does each call do the
+thing".</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>langchain-e2b</code></th>
+<th><code>langchain-sandrpod</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>isinstance(backend, BaseSandbox)</code></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>protocol methods</td>
+<td>24/24</td>
+<td>24/24</td>
+</tr>
+<tr>
+<td><code>execute</code></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>write</code> / <code>read</code></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>ls</code></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>edit</code></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>glob</code></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>grep</code></td>
+<td>✓ <em>(see below)</em></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>upload_files</code> / <code>download_files</code></td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>relative paths</td>
+<td>rejected</td>
+<td>rejected</td>
+</tr>
+<tr>
+<td>execute sees what write wrote</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>12/12</strong></td>
+<td><strong>12/12</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Two differences in the output rather than in the outcome.
+<code>glob</code> returns relative paths through E2B's backend
+(<code>probe.txt</code>) and absolute ones through SandrPod's
+(<code>/workspace/probe.txt</code>). And <code>ls</code> shapes its
+entries slightly differently. Neither breaks an agent — the model reads
+whatever it is handed — but if you write code against a backend, do not
+assume the other one formats identically.</p>
+<h3 id="the-assertion-that-had-to-be-rewritten">The assertion that had
+to be rewritten</h3>
+<p>The first version of this table was wrong, and wrong in the direction
+that matters. These calls report failure in a <strong>return
+value</strong>, not by raising:</p>
+<pre class="python"><code>ReadResult(error=&quot;File &#39;probe.txt&#39;: file_not_found&quot;, file_data=None)</code></pre>
+<p>My first sweep printed a green tick for that, because the call had
+returned without throwing. Four checks were "passing" against a file
+that was never written. A sweep that reports success for an error
+payload is worse than no sweep — it manufactures confidence. Every check
+now fails on a populated <code>error</code> field.</p>
+<hr />
+<h2 id="the-same-job-three-times-each">The same job, three times
+each</h2>
+<p>Assertions prove the plumbing. An agent proves the plumbing under a
+model that does not know or care which backend it has.</p>
+<pre><code>Write a Python script at /workspace/primes.py that prints the sum of all prime
+numbers below 1000. Then run it and tell me the number it printed.</code></pre>
+<p>The answer is checked by re-running the script inside the container
+afterwards, not by reading what the model said — an agent that reports
+<code>76127</code> while having written nothing is exactly the failure
+worth catching.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>langchain-e2b</code></th>
+<th><code>langchain-sandrpod</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>correct, verified in-container</td>
+<td>3/3</td>
+<td>3/3</td>
+</tr>
+<tr>
+<td>sandbox setup (median)</td>
+<td>3.0 s</td>
+<td>2.8 s</td>
+</tr>
+<tr>
+<td>agent wall clock (median)</td>
+<td>6.6 s</td>
+<td>4.1 s</td>
+</tr>
+<tr>
+<td>turns</td>
+<td>8, 6, 8</td>
+<td>6, 6, 6</td>
+</tr>
+<tr>
+<td>tool calls</td>
+<td><code>ls</code> → <code>write_file</code> → <code>execute</code>
+(twice), <code>write_file</code> → <code>execute</code> (once)</td>
+<td><code>write_file</code> → <code>execute</code> (all three)</td>
+</tr>
+</tbody>
+</table>
+<p>Setup time is the same within noise — 3.0 versus 2.8 seconds is not a
+finding.</p>
+<p>The agent-time gap is real across all three runs, but read it
+carefully: it is <strong>the model choosing to <code>ls</code>
+first</strong> on two of the three E2B-route runs, which costs a turn
+and a round trip. It is not transport speed. Why the model explored on
+one path and not the other, with n=3, I cannot tell you — the tool
+descriptions the two backends generate differ slightly, and that is the
+sort of thing that nudges a model. I would not build a decision on this
+number.</p>
+<hr />
+<h2 id="what-testing-both-turned-up">What testing both turned up</h2>
+<p>Three defects. None appeared in unit tests. Two of them failed
+<em>silently</em> — returning something shaped like an answer.</p>
+<h3 id="1-the-agent-was-told-the-file-was-empty">1. The agent was told
+the file was empty</h3>
+<p>deepagents' default backend implements <code>grep</code> by shelling
+out:</p>
+<pre><code>grep -rHnFZ -e edited /workspace 2&gt;/dev/null || true</code></pre>
+<p>SandrPod's sandbox image is Alpine, so <code>/bin/grep</code> was
+BusyBox's, which does not support <code>-Z</code>:</p>
+<pre><code>$ grep -rHnFZ -e edited /workspace; echo exit=$?
+grep: unrecognized option: Z
+exit=2</code></pre>
+<p><code>2&gt;/dev/null</code> throws away that message.
+<code>|| true</code> flattens the exit code. The backend gets an empty
+string back and reports <strong>no matches</strong>, and the agent
+concludes the file does not contain what it is looking for and moves
+on.</p>
+<p>There is no error anywhere in that chain. The agent gets a confident
+wrong answer, which is strictly worse than a crash.</p>
+<p>Route 2 was unaffected — <code>SandrPodSandbox</code> implements
+<code>grep</code> against the native API rather than inheriting the
+shell-out. That is not a virtue of the design so much as an accident of
+it, and it is exactly why running both paths was worthwhile: one of them
+exercised code the other never touches.</p>
+<p>Fixed by putting GNU grep in the image (<code>findutils</code> too —
+<code>find -printf</code> is the same trap waiting to happen). Verified
+against the live deployment:</p>
+<pre><code>grep version: grep (GNU grep) 3.12
+deepagents grep → [{&#39;path&#39;: &#39;/workspace/g.txt&#39;, &#39;line&#39;: 1, &#39;text&#39;: &#39;edited by the backend&#39;}]</code></pre>
+<h3 id="2-the-error-blamed-the-shell">2. The error blamed the shell</h3>
+<p><code>langchain-e2b</code> defaults <code>workdir</code> to
+<code>/home/user</code>. That directory is not in SandrPod's image, so
+it is the very first thing a new integration hits:</p>
+<pre><code>Code.INTERNAL: toolbox procmgr/start: fork/exec /bin/bash: no such file or directory</code></pre>
+<p><code>/bin/bash</code> is right there — version 5.3.9. Go's
+<code>os/exec</code> reports a missing <code>Dir</code> as ENOENT
+against the <em>binary</em>, so the message sends you to audit your
+image for a shell that was never missing.</p>
+<p>Now:</p>
+<pre><code>toolbox procmgr/start: working directory &quot;/home/user&quot; is not usable: stat …: no such file or directory</code></pre>
+<h3 id="3-the-one-that-was-not-a-bug">3. The one that was not a bug</h3>
+<p>Relative paths do not work through <code>langchain-e2b</code>:</p>
+<pre class="python"><code>backend.write(&quot;probe.txt&quot;, &quot;x&quot;)   # → error: invalid_path
+backend.write(&quot;/workspace/probe.txt&quot;, &quot;x&quot;)   # → fine</code></pre>
+<p>I spent a while building a case that this was SandrPod's fault, and
+the evidence looked good: the raw E2B SDK writes <code>"rel2.txt"</code>
+happily, and the file lands in <code>/workspace</code> exactly as it
+should. Same server, same sandbox, one call works and one does not — so
+the inconsistency had to be ours.</p>
+<p>It was not. It is the first line of <code>langchain-e2b</code>'s
+<code>_write_file</code>:</p>
+<pre class="python"><code>if not path.startswith(&quot;/&quot;):
+    return FileUploadResponse(path=path, error=&quot;invalid_path&quot;)</code></pre>
+<p>Its docstrings say "Absolute path" throughout. A deliberate contract,
+not a defect — and I would have shipped a wrong diagnosis if I had
+trusted the shape of the evidence instead of reading thirty lines of
+someone else's source.</p>
+<hr />
+<h2 id="which-one">Which one</h2>
+<p>If you are <strong>already running E2B code</strong>, route 1 costs
+you nothing: your agent keeps its backend, and <code>E2B_DOMAIN</code>
+moves the infrastructure underneath it. Remember
+<code>workdir="/workspace"</code> and keep paths absolute.</p>
+<p>If you are <strong>starting fresh on SandrPod</strong>, route 2 is
+more direct — no compatibility layer in between, <code>grep</code> and
+friends implemented against the API instead of shelled out, and the same
+client you use for everything else.</p>
+<p>Both are one line to construct and neither locks you in: the backend
+is an argument to <code>create_deep_agent</code>, so switching is a
+one-line edit, and you can keep both installed while you decide.</p>
+<p>Everything here — both sweeps, the agent script, the exact versions —
+is in the <a
+href="https://github.com/ChangjunZhao/examples/tree/main/example/deepagents-sandbox">companion
+repo</a>.</p>
+<ul>
+<li>SandrPod: <a
+href="https://github.com/sandrpod/sandrpod">https://github.com/sandrpod/sandrpod</a>
+· Apache-2.0</li>
+<li>Standing SandrPod up in the first place: <a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/PRODUCTION_DEPLOYMENT.md">PRODUCTION_DEPLOYMENT.md</a></li>
+</ul>
+
+<div class="article-foot">SandrPod is open source, Apache-2.0 — <a href="https://github.com/sandrpod/sandrpod">github.com/sandrpod/sandrpod</a>. <a href="/">More writing</a>.</div>
+</article>
+</main>
+<footer>
+  <span>SandrPod — self-hosted execution infrastructure for AI agents</span>
+  <a href="https://github.com/sandrpod/sandrpod">Source</a>
+  <a href="https://sandrpod.com/feed.xml">RSS</a>
+  <span>Apache-2.0</span>
+</footer>
+<script>
+(function () {
+  var btn = document.querySelector('.theme-toggle');
+  if (!btn) return;
+  var root = document.documentElement;
+  function current() {
+    return root.getAttribute('data-theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+  function label() { btn.textContent = current() === 'dark' ? 'Light' : 'Dark'; }
+  label();
+  btn.addEventListener('click', function () {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    label();
+  });
+})();
+</script>
+</body>
+</html>
