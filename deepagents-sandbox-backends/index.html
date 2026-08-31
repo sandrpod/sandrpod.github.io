@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Two ways to give a deepagents agent a sandbox you own — SandrPod</title>
-<meta name="description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects — and a third thing that only looked like one.">
+<meta name="description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects, both of them mine, and a third thing that only looked like one.">
 <link rel="canonical" href="https://blog.sandrpod.com/deepagents-sandbox-backends/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Two ways to give a deepagents agent a sandbox you own — SandrPod">
-<meta property="og:description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects — and a third thing that only looked like one.">
+<meta property="og:description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects, both of them mine, and a third thing that only looked like one.">
 <meta property="og:url" content="https://blog.sandrpod.com/deepagents-sandbox-backends/">
 <meta property="og:site_name" content="SandrPod">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Two ways to give a deepagents agent a sandbox you own — SandrPod">
-<meta name="twitter:description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects — and a third thing that only looked like one.">
+<meta name="twitter:description" content="langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects, both of them mine, and a third thing that only looked like one.">
 <link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
 <link rel="stylesheet" href="/style.css">
 <script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
@@ -54,8 +54,8 @@ against the native API.</li>
 same twelve backend assertions down each path, then the same agent given
 the same job three times each. Both routes pass everything. What made
 the exercise worth doing is what it turned up along the way — two
-defects, one of them silent, one of them mine to fix rather than theirs,
-and a third thing that looked like a defect until I read the source.</p>
+defects, both of them mine to fix, one of them silent, and a third thing
+that looked like a defect until I read the source.</p>
 <p>Versions throughout: <code>deepagents</code> 0.6.12,
 <code>langchain-e2b</code> 0.0.6, <code>langchain-sandrpod</code> 0.2.7,
 SandrPod v0.5.3 — the version these numbers were measured against.

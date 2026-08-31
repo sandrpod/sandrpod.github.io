@@ -18,7 +18,7 @@
       <link>https://blog.sandrpod.com/deepagents-sandbox-backends/</link>
       <guid isPermaLink="true">https://blog.sandrpod.com/deepagents-sandbox-backends/</guid>
       <pubDate>Thu, 06 Aug 2026 09:30:00 +0000</pubDate>
-      <description>langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects — and a third thing that only looked like one.</description>
+      <description>langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects, both of them mine, and a third thing that only looked like one.</description>
     </item>
   </channel>
 </rss>

@@ -18,9 +18,9 @@ If that somewhere else should be **your** infrastructure, and you are running
 This is a comparison of the two, run against a live deployment: the same twelve
 backend assertions down each path, then the same agent given the same job three
 times each. Both routes pass everything. What made the exercise worth doing is
-what it turned up along the way — two defects, one of them silent, one of them
-mine to fix rather than theirs, and a third thing that looked like a defect
-until I read the source.
+what it turned up along the way — two defects, both of them mine to fix, one of
+them silent, and a third thing that looked like a defect until I read the
+source.
 
 Versions throughout: `deepagents` 0.6.12, `langchain-e2b` 0.0.6,
 `langchain-sandrpod` 0.2.7, SandrPod v0.5.3 — the version these numbers were
