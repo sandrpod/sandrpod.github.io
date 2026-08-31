@@ -32,7 +32,8 @@ POSTS = [
         "date": "2026-08-06",
         "rfc822": "Thu, 06 Aug 2026 09:30:00 +0000",
         "blurb": "langchain-e2b and langchain-sandrpod, same twelve assertions down "
-                 "each path. Both pass. Testing both is what found three defects.",
+                 "each path. Both pass. Testing both is what found two defects — and "
+                 "a third thing that only looked like one.",
     },
 ]
 
