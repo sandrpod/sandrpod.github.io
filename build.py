@@ -106,6 +106,7 @@ def shell(*, title, desc, canonical, body, og_type="article"):
   <span>Apache-2.0</span>
 </footer>
 {THEME_TOGGLE}
+<script data-goatcounter="https://sandrpod.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
 """
