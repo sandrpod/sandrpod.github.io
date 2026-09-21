@@ -170,6 +170,11 @@ lego --email you@example.com --accept-tos \
      --path /etc/lego run
 ```
 
+> 以上是 lego 4.x 的写法。lego 5 把所有参数挪到了 `run` 子命令下，把
+> `--dns.propagation-wait` 改名为 `--dns.propagation.wait`，还去掉了 `renew`
+> 子命令——如果 `lego --version` 显示的是 5.x，请照
+> [部署指南](https://github.com/sandrpod/sandrpod/blob/main/docs/PRODUCTION_DEPLOYMENT.md#3-a-wildcard-certificate)里的写法来。
+
 `--dns.propagation-wait` 值得给得宽松些。lego 会去轮询权威 NS 查它刚写进去
 的 TXT 记录，实测 DNSPod 每个域名要一百秒左右才能稳定返回：
 
@@ -448,7 +453,7 @@ matplotlib → PNG          19276 字节, 头部 b'\x89PNG'
 图表元数据                BarChart
 ```
 
-![在自托管沙箱里生成的 matplotlib 折线图](./chart-from-sandbox.png)
+![在自托管沙箱里生成的 matplotlib 折线图](https://blog.sandrpod.com/e2b-compatible-sandbox-api/chart-from-sandbox.png)
 
 ### 端口与预览 —— 1/1
 

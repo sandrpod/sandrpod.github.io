@@ -6,16 +6,28 @@
 <title>Self-hosting an E2B-compatible sandbox stack, from an empty server — SandrPod</title>
 <meta name="description" content="One VM, one domain, four containers — then the unmodified E2B SDK talking to infrastructure you own, checked feature by feature.">
 <link rel="canonical" href="https://blog.sandrpod.com/e2b-compatible-sandbox-api/">
+<link rel="alternate" hreflang="en" href="https://blog.sandrpod.com/e2b-compatible-sandbox-api/">
+<link rel="alternate" hreflang="zh-Hans" href="https://blog.sandrpod.com/zh/e2b-compatible-sandbox-api/">
+<link rel="alternate" hreflang="x-default" href="https://blog.sandrpod.com/e2b-compatible-sandbox-api/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Self-hosting an E2B-compatible sandbox stack, from an empty server — SandrPod">
 <meta property="og:description" content="One VM, one domain, four containers — then the unmodified E2B SDK talking to infrastructure you own, checked feature by feature.">
 <meta property="og:url" content="https://blog.sandrpod.com/e2b-compatible-sandbox-api/">
 <meta property="og:site_name" content="SandrPod">
-<meta name="twitter:card" content="summary">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://blog.sandrpod.com/og/e2b-compatible-sandbox-api.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Self-hosting an E2B-compatible sandbox stack, from an empty server — SandrPod">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Self-hosting an E2B-compatible sandbox stack, from an empty server — SandrPod">
 <meta name="twitter:description" content="One VM, one domain, four containers — then the unmodified E2B SDK talking to infrastructure you own, checked feature by feature.">
+<meta name="twitter:image" content="https://blog.sandrpod.com/og/e2b-compatible-sandbox-api.png">
+<meta name="twitter:image:alt" content="Self-hosting an E2B-compatible sandbox stack, from an empty server — SandrPod">
 <link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
 <link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Self-hosting an E2B-compatible sandbox stack, from an empty server", "description": "One VM, one domain, four containers — then the unmodified E2B SDK talking to infrastructure you own, checked feature by feature.", "inLanguage": "en", "image": ["https://blog.sandrpod.com/og/e2b-compatible-sandbox-api.png"], "datePublished": "2026-08-06", "dateModified": "2026-09-21", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/e2b-compatible-sandbox-api/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
 <script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
 </head>
 <body>
@@ -25,11 +37,12 @@
   <nav aria-label="Main">
     <a href="/">Writing</a>
     <a href="https://github.com/sandrpod/sandrpod">GitHub</a>
-    <button class="theme-toggle" type="button" aria-label="Toggle colour theme">Dark</button>
+    <button class="theme-toggle" type="button" aria-label="Toggle colour theme" data-dark="Dark" data-light="Light">Dark</button>
   </nav>
 </header>
 <main id="main">
 <article>
+<p class="lang-switch"><a href="https://blog.sandrpod.com/zh/e2b-compatible-sandbox-api/" lang="zh-Hans" hreflang="zh-Hans">中文版</a></p>
 <h1
 id="self-hosting-an-e2b-compatible-sandbox-stack-from-an-empty-server">Self-hosting
 an E2B-compatible sandbox stack, from an empty server</h1>
@@ -51,7 +64,7 @@ the same requirement. This walkthrough stands up <a
 href="https://github.com/sandrpod/sandrpod">SandrPod</a> — open-source,
 Apache-2.0 — on a bare server, terminates a wildcard TLS certificate in
 front of it, and then points the <strong>official, unmodified</strong>
-<code>e2b</code> Python SDK at it by setting two environment variables.
+<code class="nb">e2b</code> Python SDK at it by setting two environment variables.
 Then we exercise the client surface function by function and report what
 works, what differs, and what does not exist yet.</p>
 <p>Everything below was run start to finish on a fresh CentOS Stream 10
@@ -59,10 +72,10 @@ VM. The outputs are real, including the failures.</p>
 <hr />
 <h2 id="1-the-shape-of-the-thing">1. The shape of the thing</h2>
 <p>E2B's architecture is: a control plane you talk to over REST, and a
-daemon called <code>envd</code> inside every sandbox that the control
+daemon called <code class="nb">envd</code> inside every sandbox that the control
 plane proxies your filesystem, process, and PTY calls through to.</p>
 <p>SandrPod's is: a control plane you talk to over REST, and a daemon
-called <code>toolbox</code> inside every sandbox that the control plane
+called <code class="nb">toolbox</code> inside every sandbox that the control plane
 reaches <strong>through a reverse tunnel</strong> the worker dials out
 on.</p>
 <pre><code>        your laptop
@@ -81,8 +94,8 @@ on.</p>
     │  sandbox container │  ← toolbox (≈ envd) lives here
     └────────────────────┘</code></pre>
 <p>That shape matters more than it looks. Because the topologies match —
-control-plane-proxies-to-in-sandbox-daemon, with <code>toolbox</code>
-sitting exactly where <code>envd</code> sits — supporting E2B's SDK is
+control-plane-proxies-to-in-sandbox-daemon, with <code class="nb">toolbox</code>
+sitting exactly where <code class="nb">envd</code> sits — supporting E2B's SDK is
 <strong>protocol adaptation, not a second architecture</strong>. Nothing
 in the diagram exists to serve compatibility; the compatibility falls
 out of a design that was already there.</p>
@@ -109,8 +122,8 @@ of anything here:</p>
 <pre><code>failed to register &quot;bridge&quot; driver: ... iptables --wait -t nat -A PREROUTING
 -m addrtype --dst-type LOCAL -j DOCKER: Warning: Extension addrtype revision 0
 not supported, missing kernel module?</code></pre>
-<p><code>xt_addrtype</code> lives in <code>kernel-modules-extra</code>,
-which was not installed — and <code>dnf</code> could not find a build
+<p><code class="nb">xt_addrtype</code> lives in <code class="nb">kernel-modules-extra</code>,
+which was not installed — and <code class="nb">dnf</code> could not find a build
 matching the running kernel, so it had silently satisfied the dependency
 with the <em>debug</em> variant of a <em>different</em> kernel version.
 Rather than chase kernel packages, switch Docker to its nftables
@@ -139,7 +152,7 @@ in advance.</p>
 it over the API keeps the whole deployment scriptable. A ~90-line
 stdlib-only Python client for DNSPod's TC3-signed API is in the <a
 href="https://github.com/ChangjunZhao/examples/tree/main/example/e2b-compatible">companion
-repo</a> (<code>tcdns.py</code>):</p>
+repo</a> (<code class="nb">tcdns.py</code>):</p>
 <pre class="bash"><code>export TENCENTCLOUD_SECRET_ID=... TENCENTCLOUD_SECRET_KEY=...
 ./tcdns.py upsert example.com api &#39;203.0.113.10&#39;
 ./tcdns.py upsert example.com &#39;*&#39; &#39;203.0.113.10&#39;</code></pre>
@@ -158,7 +171,16 @@ lego --email you@example.com --accept-tos \
      --dns tencentcloud --dns.propagation-wait 90s \
      -d example.com -d &#39;*.example.com&#39; \
      --path /etc/lego run</code></pre>
-<p>The <code>--dns.propagation-wait</code> is worth setting generously.
+<blockquote>
+<p>These are lego 4.x flags. lego 5 moved every flag under
+<code class="nb">run</code>, renamed <code class="nb">--dns.propagation-wait</code> to
+<code class="nb">--dns.propagation.wait</code>, and dropped the <code class="nb">renew</code>
+subcommand — if <code class="nb">lego --version</code> says 5, use the form in the
+<a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/PRODUCTION_DEPLOYMENT.md#3-a-wildcard-certificate">deployment
+guide</a>.</p>
+</blockquote>
+<p>The <code class="nb">--dns.propagation-wait</code> is worth setting generously.
 lego polls the authoritative nameservers for the TXT record it just
 wrote, and DNSPod took around 100 seconds per domain to serve it
 consistently:</p>
@@ -168,7 +190,7 @@ consistently:</p>
 <pre><code>$ openssl x509 -in /etc/lego/certificates/example.com.crt -noout -ext subjectAltName
     DNS:*.example.com, DNS:example.com</code></pre>
 <p>Note the filename: lego names the bundle after the
-<strong>first</strong> <code>-d</code>, not after the wildcard.</p>
+<strong>first</strong> <code class="nb">-d</code>, not after the wildcard.</p>
 <p>Renewal is a daily systemd timer that no-ops until there are fewer
 than 30 days left, and signals the proxy to reload when it does
 renew:</p>
@@ -231,31 +253,31 @@ networks:
     name: sandrpod          # ← pin it; see below</code></pre>
 <p>Four details in there are load-bearing.</p>
 <p><strong><code>SANDRPOD_TOKEN: ${SANDRPOD_TOKEN:?}</code>.</strong>
-The <code>:?</code> makes Compose refuse to start when the variable is
+The <code class="nb">:?</code> makes Compose refuse to start when the variable is
 empty. An empty token means every request runs as an anonymous admin,
 which is survivable on a laptop and catastrophic on a public IP. Failing
 to boot is better than booting wrong.</p>
-<p><strong><code>SANDRPOD_NETWORK: sandrpod</code>, and
-<code>name: sandrpod</code> on the network.</strong> The worker passes
+<p><strong><code class="nb">SANDRPOD_NETWORK: sandrpod</code>, and
+<code class="nb">name: sandrpod</code> on the network.</strong> The worker passes
 that string straight to the Docker API when it creates sandbox
 containers, so it must be the network's <em>real</em> Docker name — and
 Compose prefixes network names with the project name unless you pin
 them. Get this wrong and the failure is nasty: sandboxes are created
 successfully, land on a different network, and every exec hangs until it
 times out.</p>
-<p><strong><code>REGION: local</code>.</strong> The E2B gateway
-schedules onto <code>provider=local</code> / <code>region=local</code>
+<p><strong><code class="nb">REGION: local</code>.</strong> The E2B gateway
+schedules onto <code class="nb">provider=local</code> / <code class="nb">region=local</code>
 for the local substrate. A worker registered as, say,
-<code>cn-guangzhou</code> is filtered out by the scheduler, and
-<code>Sandbox.create()</code> returns
+<code class="nb">cn-guangzhou</code> is filtered out by the scheduler, and
+<code class="nb">Sandbox.create()</code> returns
 <code>500: no available local poder found</code> while
-<code>/api/v1/poders</code> cheerfully shows it ONLINE. (Set
-<code>SANDRPOD_E2B_PROVIDER</code> instead if you want
-<code>Sandbox.create()</code> to provision real cloud VMs.)</p>
-<p><strong><code>127.0.0.1:8080:8080</code>.</strong> Once
-<code>SANDRPOD_E2B_DOMAIN</code> is set, <em>every</em> host under that
+<code class="nb">/api/v1/poders</code> cheerfully shows it ONLINE. (Set
+<code class="nb">SANDRPOD_E2B_PROVIDER</code> instead if you want
+<code class="nb">Sandbox.create()</code> to provision real cloud VMs.)</p>
+<p><strong><code class="nb">127.0.0.1:8080:8080</code>.</strong> Once
+<code class="nb">SANDRPOD_E2B_DOMAIN</code> is set, <em>every</em> host under that
 domain belongs to the E2B gateway — the native admin API returns 404 on
-<code>api.example.com</code>. So bind it to loopback and reach it by
+<code class="nb">api.example.com</code>. So bind it to loopback and reach it by
 SSH, which has the pleasant side effect of keeping the admin surface off
 the internet entirely.</p>
 <p>The Caddy config is short, and one of its defaults is doing real
@@ -276,12 +298,12 @@ work:</p>
 :80 {
     redir https://{host}{uri} permanent
 }</code></pre>
-<p>A single <code>:443</code> block serves every hostname, because a
+<p>A single <code class="nb">:443</code> block serves every hostname, because a
 wildcard certificate is valid for all of them and the backend routes on
-<code>Host</code> itself. <strong>Caddy forwards the original
-<code>Host</code> header by default</strong> — which is the whole
+<code class="nb">Host</code> itself. <strong>Caddy forwards the original
+<code class="nb">Host</code> header by default</strong> — which is the whole
 routing mechanism here. On nginx you must write
-<code>proxy_set_header Host $host;</code> explicitly, or every sandbox
+<code class="nb">proxy_set_header Host $host;</code> explicitly, or every sandbox
 URL silently stops resolving to a sandbox.</p>
 <pre><code>$ docker compose up -d --wait
  Container sandrpod-postgres  Healthy
@@ -291,8 +313,8 @@ URL silently stops resolving to a sandbox.</p>
 <h3 id="25-an-api-key-shaped-like-e2bs">2.5 An API key shaped like
 E2B's</h3>
 <p>The E2B SDK validates the key client-side against
-<code>/^e2b_[0-9a-f]+$/</code>, so keys are issued in that shape and are
-drop-in as <code>E2B_API_KEY</code>. Only the hash is stored; the bare
+<code class="nb">/^e2b_[0-9a-f]+$/</code>, so keys are issued in that shape and are
+drop-in as <code class="nb">E2B_API_KEY</code>. Only the hash is stored; the bare
 key is shown once.</p>
 <pre class="bash"><code>curl -s -X POST -H &quot;Authorization: Bearer $SANDRPOD_TOKEN&quot; \
   -H &#39;Content-Type: application/json&#39; \
@@ -329,15 +351,15 @@ include real round-trip time, not just server work:</p>
 </thead>
 <tbody>
 <tr>
-<td><code>Sandbox.create()</code> → usable</td>
+<td><code class="nb">Sandbox.create()</code> → usable</td>
 <td><strong>2.7 s</strong></td>
 </tr>
 <tr>
-<td><code>commands.run</code> round trip</td>
+<td><code class="nb">commands.run</code> round trip</td>
 <td><strong>217 ms</strong></td>
 </tr>
 <tr>
-<td><code>run_code</code> round trip</td>
+<td><code class="nb">run_code</code> round trip</td>
 <td><strong>194 ms</strong></td>
 </tr>
 </tbody>
@@ -347,8 +369,8 @@ once.)</p>
 <hr />
 <h2 id="4-the-client-surface-function-by-function">4. The client
 surface, function by function</h2>
-<p><code>e2b</code> <strong>2.35.0</strong> and
-<code>e2b-code-interpreter</code> <strong>2.9.0</strong>, against the
+<p><code class="nb">e2b</code> <strong>2.35.0</strong> and
+<code class="nb">e2b-code-interpreter</code> <strong>2.9.0</strong>, against the
 deployment above. Every row below really executed.</p>
 <h3 id="lifecycle--1111">Lifecycle — 11/11</h3>
 <table>
@@ -360,24 +382,24 @@ deployment above. Every row below really executed.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>Sandbox.create()</code></td>
-<td><code>e2b6c1b0f2b8a72dd40</code> in 2.9 s</td>
+<td><code class="nb">Sandbox.create()</code></td>
+<td><code class="nb">e2b6c1b0f2b8a72dd40</code> in 2.9 s</td>
 </tr>
 <tr>
-<td><code>is_running()</code></td>
-<td><code>True</code></td>
+<td><code class="nb">is_running()</code></td>
+<td><code class="nb">True</code></td>
 </tr>
 <tr>
-<td><code>get_info()</code></td>
-<td><code>state=running</code>, <code>envd_version=0.2.0</code>, cpu/mem
+<td><code class="nb">get_info()</code></td>
+<td><code class="nb">state=running</code>, <code class="nb">envd_version=0.2.0</code>, cpu/mem
 populated</td>
 </tr>
 <tr>
-<td><code>set_timeout(600)</code></td>
+<td><code class="nb">set_timeout(600)</code></td>
 <td>ok — maps to the sandbox's idle TTL</td>
 </tr>
 <tr>
-<td><code>Sandbox.list()</code></td>
+<td><code class="nb">Sandbox.list()</code></td>
 <td>found</td>
 </tr>
 <tr>
@@ -385,39 +407,39 @@ populated</td>
 <td>found — metadata round-trips and filters</td>
 </tr>
 <tr>
-<td><code>Sandbox.connect(id)</code></td>
+<td><code class="nb">Sandbox.connect(id)</code></td>
 <td>reattached</td>
 </tr>
 <tr>
-<td><code>pause()</code> / resume via <code>connect()</code></td>
-<td><code>True</code>, then <code>echo back</code> →
-<code>back</code></td>
+<td><code class="nb">pause()</code> / resume via <code class="nb">connect()</code></td>
+<td><code class="nb">True</code>, then <code class="nb">echo back</code> →
+<code class="nb">back</code></td>
 </tr>
 <tr>
-<td><code>kill()</code>, then <code>is_running()</code></td>
-<td><code>True</code>, then <code>False</code></td>
+<td><code class="nb">kill()</code>, then <code class="nb">is_running()</code></td>
+<td><code class="nb">True</code>, then <code class="nb">False</code></td>
 </tr>
 </tbody>
 </table>
 <h3 id="filesystem--1111">Filesystem — 11/11</h3>
-<p><code>write</code> · <code>read</code> ·
-<code>read(format="bytes")</code> · <code>exists</code> ·
-<code>get_info</code> · <code>make_dir</code> · <code>list</code> ·
-<code>rename</code> · <code>remove</code> · <code>write_files</code>
-(batch multipart) · <code>watch_dir</code></p>
+<p><code class="nb">write</code> · <code class="nb">read</code> ·
+<code class="nb">read(format="bytes")</code> · <code class="nb">exists</code> ·
+<code class="nb">get_info</code> · <code class="nb">make_dir</code> · <code class="nb">list</code> ·
+<code class="nb">rename</code> · <code class="nb">remove</code> · <code class="nb">write_files</code>
+(batch multipart) · <code class="nb">watch_dir</code></p>
 <pre><code>watch_dir  →  2 events: [(&#39;watched.txt&#39;, CREATE), (&#39;watched.txt&#39;, WRITE)]</code></pre>
 <h3 id="commands--77">Commands — 7/7</h3>
-<p><code>run</code> foreground · non-zero exit raising
+<p><code class="nb">run</code> foreground · non-zero exit raising
 <code>CommandExitException(exit_code=3)</code> ·
-<code>run(background=True)</code> returning a real pid ·
-<code>list</code> · <code>send_stdin</code> · <code>kill</code> · and
+<code class="nb">run(background=True)</code> returning a real pid ·
+<code class="nb">list</code> · <code class="nb">send_stdin</code> · <code class="nb">kill</code> · and
 incremental streaming:</p>
 <pre><code>connect (streaming)  →  3 separate chunks, exit=0</code></pre>
 <p>Three chunks, not one buffered blob — which is what
-<code>flush_interval -1</code> in the Caddy config is protecting.</p>
+<code class="nb">flush_interval -1</code> in the Caddy config is protecting.</p>
 <h3 id="pty--11">PTY — 1/1</h3>
-<p><code>create</code> / <code>send_stdin</code> / <code>resize</code> /
-<code>kill</code>, a real terminal session:</p>
+<p><code class="nb">create</code> / <code class="nb">send_stdin</code> / <code class="nb">resize</code> /
+<code class="nb">kill</code>, a real terminal session:</p>
 <pre><code>killed=True, echoed &#39;pty-works&#39;=True, 16 frames</code></pre>
 <h3
 id="code-interpreter--1414-run_code-5-stateful-2-contexts-5-charts-2">Code
@@ -425,7 +447,7 @@ interpreter — 14/14 (run_code 5, stateful 2, contexts 5, charts 2)</h3>
 <p>Stateful kernel, which is the whole point of this SDK:</p>
 <pre class="python"><code>sbx.run_code(&quot;a = 100&quot;)
 sbx.run_code(&quot;a * 2&quot;).text        # → &#39;200&#39;</code></pre>
-<p>Contexts are independent namespaces, and <code>restart</code> clears
+<p>Contexts are independent namespaces, and <code class="nb">restart</code> clears
 one without destroying it:</p>
 <pre><code>create                 → 1bba3fa6bdceaa3e…, z=7 written
 list                   → 1 context
@@ -434,9 +456,9 @@ restart                → NameError: name &#39;z&#39; is not defined
 remove                 → removed</code></pre>
 <p>Errors come back structured rather than as text:</p>
 <pre><code>run_code(&quot;1/0&quot;)  →  ZeroDivisionError: division by zero</code></pre>
-<p>And charts are captured, not just printed. A <code>matplotlib</code>
+<p>And charts are captured, not just printed. A <code class="nb">matplotlib</code>
 figure drawn inside the sandbox arrives as a PNG in
-<code>Execution.results[].png</code>, plus structured chart
+<code class="nb">Execution.results[].png</code>, plus structured chart
 metadata:</p>
 <pre><code>matplotlib → PNG          19276 bytes, header b&#39;\x89PNG&#39;
 chart metadata            BarChart</code></pre>
@@ -454,7 +476,7 @@ on the same wildcard domain is <em>not</em> included in that:</p>
 <pre><code>GET https://49983-&lt;id&gt;.example.com/files          → 401
 GET https://49983-&lt;id&gt;.example.com/files + key    → 200</code></pre>
 <p>If every consumer in your deployment is a program that can carry a
-key, set <code>SANDRPOD_E2B_PRIVATE_PORTS=1</code> and the preview URLs
+key, set <code class="nb">SANDRPOD_E2B_PRIVATE_PORTS=1</code> and the preview URLs
 require one too.</p>
 <h3 id="metrics--11">Metrics — 1/1</h3>
 <pre><code>get_metrics()  →  1 sample, cpu=0%, mem=1044590592</code></pre>
@@ -466,17 +488,17 @@ plain-HTTP debug listener — where requests never traverse the
 <code>&lt;port&gt;-&lt;sandboxID&gt;.&lt;domain&gt;</code> host router,
 so none of them can occur.</p>
 <ul>
-<li><strong><code>is_running()</code> always returned
-<code>False</code>.</strong> The SDK probes <code>GET /health</code> on
-the envd host and reads 502 as "not running". <code>/health</code> was
+<li><strong><code class="nb">is_running()</code> always returned
+<code class="nb">False</code>.</strong> The SDK probes <code class="nb">GET /health</code> on
+the envd host and reads 502 as "not running". <code class="nb">/health</code> was
 not a routed envd path, so it fell through to the generic port proxy,
-which dialled <code>127.0.0.1:49983</code> inside the container, found
+which dialled <code class="nb">127.0.0.1:49983</code> inside the container, found
 nothing listening, and returned 502 — for a perfectly healthy
 sandbox.</li>
 <li><strong>Code-interpreter contexts were entirely unusable</strong>
-(401). The SDK sends <code>X-Access-Token</code> on
-<code>/execute</code> but <em>no credential at all</em> on
-<code>/contexts</code> — an asymmetry that only shows up once auth is
+(401). The SDK sends <code class="nb">X-Access-Token</code> on
+<code class="nb">/execute</code> but <em>no credential at all</em> on
+<code class="nb">/contexts</code> — an asymmetry that only shows up once auth is
 enforced on that host.</li>
 <li><strong>Preview URLs required an API key</strong>, which no browser
 can supply.</li>
@@ -499,20 +521,20 @@ worse:</p>
 </thead>
 <tbody>
 <tr>
-<td><code>create_snapshot()</code></td>
-<td><code>405</code> — not implemented</td>
+<td><code class="nb">create_snapshot()</code></td>
+<td><code class="nb">405</code> — not implemented</td>
 </tr>
 <tr>
-<td><code>fork()</code></td>
-<td><code>405</code> — not implemented</td>
+<td><code class="nb">fork()</code></td>
+<td><code class="nb">405</code> — not implemented</td>
 </tr>
 <tr>
-<td><code>envVars</code> on create</td>
+<td><code class="nb">envVars</code> on create</td>
 <td>accepted, but not exercised by the real SDK yet</td>
 </tr>
 </tbody>
 </table>
-<p><code>get_mcp_url()</code> and <code>download_url()</code> do return
+<p><code class="nb">get_mcp_url()</code> and <code class="nb">download_url()</code> do return
 well-formed URLs (<code>50005-&lt;id&gt;.&lt;domain&gt;/mcp</code> and
 <code>49983-&lt;id&gt;.&lt;domain&gt;/files?path=…</code>); this sweep
 only checked that they are produced, not that every consumer of them
@@ -523,19 +545,19 @@ the 405s above.</p>
 <h2 id="6-what-it-costs-to-keep">6. What it costs to keep</h2>
 <p>One VM. The stack idles at four containers; sandboxes are Docker
 containers created on demand and reclaimed on an idle TTL you set per
-sandbox (<code>set_timeout</code>). Certificate renewal is a systemd
+sandbox (<code class="nb">set_timeout</code>). Certificate renewal is a systemd
 timer. Postgres holds sandboxes, jobs, workers, and API-token hashes —
 back that up and you can rebuild everything else from the Compose
 file.</p>
 <p>Scaling out is adding workers, not resizing this one: each
-<code>poder</code> dials the control plane over its outbound tunnel, so
+<code class="nb">poder</code> dials the control plane over its outbound tunnel, so
 a second machine — another cloud, another region, an office box behind
 NAT — joins by running one container with no inbound firewall changes at
 all.</p>
 <hr />
 <h2 id="reproduce-it">Reproduce it</h2>
 <p>Everything here — the Compose file, the Caddyfile,
-<code>tcdns.py</code>, the lego units, and both test sweeps — is in the
+<code class="nb">tcdns.py</code>, the lego units, and both test sweeps — is in the
 <a
 href="https://github.com/ChangjunZhao/examples/tree/main/example/e2b-compatible">companion
 repo</a>. The whole path from an empty server to a passing sweep is four
@@ -544,11 +566,11 @@ scripts.</p>
 <li>SandrPod: <a
 href="https://github.com/sandrpod/sandrpod">https://github.com/sandrpod/sandrpod</a>
 (Apache-2.0)</li>
-<li><code>pip install sandrpod-cli</code></li>
+<li><code class="nb">pip install sandrpod-cli</code></li>
 </ul>
 <p>If you try it against a different DNS provider or a different distro,
 the two places to look first are the wildcard record and the
-<code>Host</code> header — in that order. Everything else in this
+<code class="nb">Host</code> header — in that order. Everything else in this
 walkthrough was easy.</p>
 
 <div class="article-foot">SandrPod is open source, Apache-2.0 — <a href="https://github.com/sandrpod/sandrpod">github.com/sandrpod/sandrpod</a>. <a href="/">More writing</a>.</div>
@@ -569,7 +591,7 @@ walkthrough was easy.</p>
     return root.getAttribute('data-theme') ||
       (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   }
-  function label() { btn.textContent = current() === 'dark' ? 'Light' : 'Dark'; }
+  function label() { btn.textContent = current() === 'dark' ? btn.dataset.light : btn.dataset.dark; }
   label();
   btn.addEventListener('click', function () {
     var next = current() === 'dark' ? 'light' : 'dark';

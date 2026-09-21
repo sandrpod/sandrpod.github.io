@@ -11,11 +11,20 @@
 <meta property="og:description" content="Open-source, Apache-2.0. Run AI-agent code on infrastructure you own: any cloud, plain Docker, or a bare machine. E2B-SDK compatible.">
 <meta property="og:url" content="https://blog.sandrpod.com/">
 <meta property="og:site_name" content="SandrPod">
-<meta name="twitter:card" content="summary">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://blog.sandrpod.com/og/site.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SandrPod — self-hosted execution infrastructure for AI agents">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="SandrPod — self-hosted execution infrastructure for AI agents">
 <meta name="twitter:description" content="Open-source, Apache-2.0. Run AI-agent code on infrastructure you own: any cloud, plain Docker, or a bare machine. E2B-SDK compatible.">
+<meta name="twitter:image" content="https://blog.sandrpod.com/og/site.png">
+<meta name="twitter:image:alt" content="SandrPod — self-hosted execution infrastructure for AI agents">
 <link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
 <link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "SandrPod", "url": "https://blog.sandrpod.com/", "description": "Open-source, Apache-2.0. Run AI-agent code on infrastructure you own: any cloud, plain Docker, or a bare machine. E2B-SDK compatible.", "inLanguage": "en"}</script>
 <script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
 </head>
 <body>
@@ -25,7 +34,7 @@
   <nav aria-label="Main">
     <a href="/">Writing</a>
     <a href="https://github.com/sandrpod/sandrpod">GitHub</a>
-    <button class="theme-toggle" type="button" aria-label="Toggle colour theme">Dark</button>
+    <button class="theme-toggle" type="button" aria-label="Toggle colour theme" data-dark="Dark" data-light="Light">Dark</button>
   </nav>
 </header>
 <main id="main">
@@ -72,7 +81,7 @@
     return root.getAttribute('data-theme') ||
       (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   }
-  function label() { btn.textContent = current() === 'dark' ? 'Light' : 'Dark'; }
+  function label() { btn.textContent = current() === 'dark' ? btn.dataset.light : btn.dataset.dark; }
   label();
   btn.addEventListener('click', function () {
     var next = current() === 'dark' ? 'light' : 'dark';

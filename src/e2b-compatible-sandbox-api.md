@@ -169,6 +169,11 @@ lego --email you@example.com --accept-tos \
      --path /etc/lego run
 ```
 
+> These are lego 4.x flags. lego 5 moved every flag under `run`, renamed
+> `--dns.propagation-wait` to `--dns.propagation.wait`, and dropped the `renew`
+> subcommand — if `lego --version` says 5, use the form in the
+> [deployment guide](https://github.com/sandrpod/sandrpod/blob/main/docs/PRODUCTION_DEPLOYMENT.md#3-a-wildcard-certificate).
+
 The `--dns.propagation-wait` is worth setting generously. lego polls the
 authoritative nameservers for the TXT record it just wrote, and DNSPod took
 around 100 seconds per domain to serve it consistently:
