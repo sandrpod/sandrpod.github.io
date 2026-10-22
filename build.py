@@ -170,6 +170,7 @@ def shell(*, title, desc, canonical, body, card, lang="en", og_type="article",
   <span>{ui['tag']}</span>
   <a href="{GITHUB}">{ui['source']}</a>
   <a href="{SITE}/feed.xml">RSS</a>
+  <a href="https://www.facebook.com/itscjzhao">Facebook</a>
   <span>Apache-2.0</span>
 </footer>
 {THEME_TOGGLE}
