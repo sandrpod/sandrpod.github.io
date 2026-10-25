@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三道边界，和一把永远进不了沙箱的钥匙 — SandrPod</title>
+<meta name="description" content="出网白名单、OS 沙箱、以及一把模型拷不走的钥匙——0.6.0 在门下面加的三层,以及造它们时冒出来的六个 bug,每一个对拥有它的那一层都是隐形的。">
+<link rel="canonical" href="https://blog.sandrpod.com/zh/three-boundaries/">
+<link rel="alternate" hreflang="en" href="https://blog.sandrpod.com/three-boundaries/">
+<link rel="alternate" hreflang="zh-Hans" href="https://blog.sandrpod.com/zh/three-boundaries/">
+<link rel="alternate" hreflang="x-default" href="https://blog.sandrpod.com/three-boundaries/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="三道边界，和一把永远进不了沙箱的钥匙 — SandrPod">
+<meta property="og:description" content="出网白名单、OS 沙箱、以及一把模型拷不走的钥匙——0.6.0 在门下面加的三层,以及造它们时冒出来的六个 bug,每一个对拥有它的那一层都是隐形的。">
+<meta property="og:url" content="https://blog.sandrpod.com/zh/three-boundaries/">
+<meta property="og:site_name" content="SandrPod">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog.sandrpod.com/og/zh-three-boundaries.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="三道边界，和一把永远进不了沙箱的钥匙 — SandrPod">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="三道边界，和一把永远进不了沙箱的钥匙 — SandrPod">
+<meta name="twitter:description" content="出网白名单、OS 沙箱、以及一把模型拷不走的钥匙——0.6.0 在门下面加的三层,以及造它们时冒出来的六个 bug,每一个对拥有它的那一层都是隐形的。">
+<meta name="twitter:image" content="https://blog.sandrpod.com/og/zh-three-boundaries.png">
+<meta name="twitter:image:alt" content="三道边界，和一把永远进不了沙箱的钥匙 — SandrPod">
+<link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "三道边界，和一把永远进不了沙箱的钥匙", "description": "出网白名单、OS 沙箱、以及一把模型拷不走的钥匙——0.6.0 在门下面加的三层,以及造它们时冒出来的六个 bug,每一个对拥有它的那一层都是隐形的。", "inLanguage": "zh-Hans", "image": ["https://blog.sandrpod.com/og/zh-three-boundaries.png"], "datePublished": "2026-10-25", "dateModified": "2026-10-25", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/zh/three-boundaries/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
+<script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="masthead">
+  <a class="wordmark" href="/">SandrPod</a>
+  <nav aria-label="Main">
+    <a href="/">文章</a>
+    <a href="https://github.com/sandrpod/sandrpod">GitHub</a>
+    <button class="theme-toggle" type="button" aria-label="切换配色" data-dark="深色" data-light="浅色">深色</button>
+  </nav>
+</header>
+<main id="main">
+<article>
+<p class="lang-switch"><a href="https://blog.sandrpod.com/three-boundaries/" lang="en" hreflang="en">English</a></p>
+<h1
+id="三道边界和一把永远进不了沙箱的钥匙">三道边界，和一把永远进不了沙箱的钥匙</h1>
+<p><em>0.5.x 隔离的是一个文件系统。0.6.0
+问的是更难的问题：如果代码压根不走你造的那扇门呢？</em></p>
+<hr />
+<p>每一种沙箱设计，洞都在同一个地方。你在文件 API
+前面立了道门，模型直接调
+<code class="nb">open(2)</code>；你在网络前面放了代理，模型把
+<code class="nb">HTTP_PROXY</code>
+一删。你运行的这段代码是模型替你写的，它没有义务走你的门。</p>
+<p>SandrPod 0.5.x 的文件边界其实做得不错：toolbox
+会把每个路径对一遍策略，hardlock 清单让 <code class="nb">~/.ssh</code>
+够不着。它也很诚实地写了那句话——<em>任意代码执行本身不是文件 API
+能关住的东西</em>——然后就停在那儿了。这次把它补完，靠的不是把门做得更聪明，而是在门<strong>下面</strong>加三层，每一层都管上一层看不见的那部分。</p>
+<h2 id="第一层你能去哪儿">第一层：你能去哪儿</h2>
+<p>出网白名单本身不稀奇，有意思的是它有三种持法，而且<strong>失败方式各不相同</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>规则在哪</th>
+<th>收紧的规则何时生效</th>
+<th>服务端连不上</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="nb">-egress-mode=enforce</code></td>
+<td>本地文件</td>
+<td>重启时</td>
+<td>照常</td>
+</tr>
+<tr>
+<td><code class="nb">-egress-mode=server</code></td>
+<td>两端（轮询副本）</td>
+<td><code class="nb">-egress-sync</code> 内（60s）</td>
+<td>用最后一份副本</td>
+</tr>
+<tr>
+<td><code class="nb">-egress-mode=decider</code></td>
+<td>只在服务端</td>
+<td>下一个连接（≤10s 缓存）</td>
+<td><strong>拒绝</strong></td>
+</tr>
+</tbody>
+</table>
+<p>第三种存在的理由很朴素：一份你没法快速撤回的策略，等于没有。代价写在明面上而不是塞进脚注：问不到答案的
+decider
+就是拒绝。连不上策略服务绝不能悄悄变成开放代理，而"我们没问到规则"和"规则说不"是两件事——代理有意把它们的报错区分开。</p>
+<p>清单底下有个值得从 <a
+href="https://github.com/anthropics/sandbox-runtime">sandbox-runtime</a>
+借走的细节：域名只解析<strong>一次</strong>，校验解析出来的地址（loopback、link-local、云元数据、本机自己的网卡），然后拨的是校验过的那个
+IP。第二次 DNS 查询正是 DNS 重绑定攻击住的地方。</p>
+<p>容器沙箱用另一套机制拿到同一份策略——因为上面这些对"无视代理环境变量"的进程毫无作用：每个
+pod 一个 <code class="nb">Internal: true</code> 的网络，加一个
+<code class="nb">egress-proxy</code>
+sidecar，容器除了代理之外没有任何路由。两种部署，一份策略文件，"这台主机能不能出去"只有一个答案。</p>
+<h2
+id="第二层内核管那些不听你的进程">第二层：内核，管那些不听你的进程</h2>
+<p>第二层是模型绕不过去的那层，因为它不是一个 API。打开
+<code class="nb">-os-sandbox</code> 后，toolbox 派生的每个进程都跑在
+bubblewrap（Linux）或 Seatbelt（macOS）里，形状一致：</p>
+<ul>
+<li><strong>根只读</strong>，"把钥匙写到以后能读到的地方"无处落地；</li>
+<li><strong>hardlock 被遮蔽</strong>——<code class="nb">~/.ssh</code> 不是"文件 API
+不让读"，是<strong>根本不在</strong>；</li>
+<li><strong>持久化路径只读</strong>——<code class="nb">.git/hooks</code>、<code class="nb">.git/config</code>、<code class="nb">.bashrc</code>、<code class="nb">.mcp.json</code>、
+IDE 启动配置。这些文件在 agent
+工作树里唯一合理的用途，就是等沙箱没了之后再跑一次；</li>
+<li><strong>能力被丢掉</strong>；Linux 上还有<strong>独立的 network
+namespace</strong>，唯一出口是代理——经由 loopback 上的
+relay，因为没有桥接的 namespace 连代理也够不着。</li>
+</ul>
+<p>网络这块试了两次。第一版把沙箱放进独立 namespace
+就不管了，那是一堵没有门的墙： <code class="nb">wget</code> 连代理都解析不到。relay
+就是那扇门——几十行代码，在 namespace 里监听
+<code class="nb">127.0.0.1</code>，转发到宿主上代理的 unix
+socket。它自己<strong>不带任何策略</strong>，这是刻意的：每个字节仍然交给代理，决定权在那里。</p>
+<p>丢能力这件事有个更细的判断。<code class="nb">--cap-drop ALL</code> 是对的，直到
+agent 以 root 运行——系统服务就是这样跑的——然后它砸掉了"服务某个用户的
+home 目录"这个最普通的场景：没有 <code class="nb">CAP_DAC_OVERRIDE</code> 的 root
+读不了别人的文件。所以这一版只留两枚， <code class="nb">CAP_DAC_OVERRIDE</code> 和
+<code class="nb">CAP_DAC_READ_SEARCH</code>；<code class="nb">CAP_SYS_ADMIN</code>
+仍然拿掉，因为它才是能 <code class="nb">umount</code> 掉上面所有遮蔽的那一枚。</p>
+<h2 id="第三层agent-永远拿不到的那把钥匙">第三层：agent
+永远拿不到的那把钥匙</h2>
+<p>第三层让我重写过两次文档。</p>
+<p>能调用付费 API 的 agent
+需要钥匙。钥匙在它的环境变量里，它就能打印、发到策略允许的主机、粘进仓库。于是
+<code class="nb">-credential-mask</code> 把真值换成
+<code class="nb">fake_value_&lt;uuid4&gt;</code> 放进沙箱，由代理在它<strong>终止的
+TLS</strong> 上换回来。</p>
+<p>"终止的 TLS"这几个字，就是诚实要开始的地方——TLS
+终止不是中性操作。对被终止的主机，沙箱看到的证书是<strong>我们</strong>签的；证书
+pinning 失效，到上游的 mTLS
+不可能工作。换来的是"用这把钥匙，但别让模型拷走"目前唯一通用的答案：真实字节只存在于代理的内存里、以及代理发出的那个请求里，沙箱够不到的地方。需要真正端到端通道的主机放进
+<code>-credential-terminate-exclude</code>，代价是那些主机没有掩码——这是交换，不是疏漏。明文
+HTTP 上带 sentinel 的请求一律拒绝，而不是放出去。</p>
+<p>两条实现细节，因为这类特性通常烂在这两处。请求体替换是<strong>等长</strong>的，<code class="nb">Content-Length</code>
+保持有效，代理不需要重新分帧。AWS SigV4 请求要用真 secret
+<strong>重签</strong>，因为签名是对整个请求的
+HMAC：<code class="nb">Credential</code> 作用域里的 sentinel
+不是能原地换掉的值。重签器拿 AWS
+官方示例签名做过校验——重签错一点点，报错和"密钥错了"完全一样，这种 bug
+能藏好几个月。</p>
+<h2 id="拒绝有两个读者">拒绝有两个读者</h2>
+<p>有个小改动，实际影响比预期大：每个拒绝现在带两份说明。</p>
+<pre><code>Reason:      路径 &quot;/Users/me/.ssh/id_rsa&quot; 被 hardlock 锁定（可用 sandrpod-tray unlock 解锁）
+ModelReason: /Users/me/.ssh/id_rsa is hard-locked by the operator&#39;s policy and cannot be
+             read or written; do not retry, and ask the user to unlock it in the tray if
+             this is genuinely needed</code></pre>
+<p>第一份给对话框里的人看。第二份给模型看，随工具返回值进到对话里——一行英文，写明拒了什么、接下来怎么办。两份都进审计。这个拆分不是装饰：把本地化的
+UI
+文案丢给模型，是它无法行动的噪音；把英文祈使句塞进同意对话框，是让人点按钮时觉得"这是个
+bug"。</p>
+<h2 id="集群必须和你意见一致">集群必须和你意见一致</h2>
+<p>有墙的沙箱，前提是跑它的那台机器真能执行这堵墙。这次发布之前的 worker
+完全不认策略字段：容器照常起、状态报 <code class="nb">RUNNING</code>，而 API
+还会把策略原样返回，仿佛它正在生效。</p>
+<p>所以 worker
+现在在隧道握手时声明自己能强制什么，控制面拒绝把策略放到一个没有声明该能力的
+worker 上：</p>
+<pre><code>409 worker capability unavailable: this sandbox asks for an egress policy, but
+1 online local worker(s) do not support it (upgrade the poder to a build that
+advertises &quot;egress&quot;, or drop the policy)</code></pre>
+<p>agent 那边是镜像的逻辑：<code class="nb">-egress-mode=server|decider</code>
+启动前先探测 <code class="nb">GET /api/v1/capabilities</code>，对不支持的 server
+直接拒绝启动，而不是跑成 deny-all
+让人以为是网络故障。一条你专门为探测而造的路由返回 404
+是无歧义的；沙箱记录的 404 不是。这个区别就是整个设计。</p>
+<h2 id="这些测试到底付出了什么代价">这些测试到底付出了什么代价</h2>
+<p>上面是设计。真正有意思的是
+bug，它们有一个共同点：每一个对"拥有它的那层"都是隐形的。</p>
+<ul>
+<li><strong>OS 沙箱从来没真正跑起来过。</strong> <code class="nb">Resolve</code>
+返回的是裸名 <code class="nb">bwrap</code>，toolbox 把它赋给
+<code class="nb">exec.Cmd.Path</code>，而 <code class="nb">execve</code> 不做
+<code class="nb">PATH</code> 查找，于是每次 <code class="nb">Execute</code> 都死在
+<code>fork/exec bwrap: no such file or directory</code>。包自己的测试是过的，因为它们调
+<code class="nb">Command()</code> 再把结果交给
+<code class="nb">exec.Command</code>，后者自己会查。这个问题是手工走查第一条命令时发现的。</li>
+<li><strong>交互式 PTY 完全没套沙箱。</strong>
+<code class="nb">ProcManager.Start</code> 在 PTY 分支里提前
+return，跳过了包装那一步——一个交互会话直接跑在 bubblewrap
+外面，正是这一层存在的理由。</li>
+<li><strong>掩码后的 SigV4 从来没被重签。</strong> 头替换先把
+<code class="nb">Credential</code> 换成真 access key，重签器再去找 sentinel
+就找不到了，请求带着"签名对不上密钥"发出去。每一次掩码的 AWS 调用都会以
+<code class="nb">SignatureDoesNotMatch</code> 失败。</li>
+<li><strong>被 hardlock 的目录里的掩码文件根本不可见。</strong>
+替换挂载排在 hardlock 遮蔽之前，而默认种子把 <code class="nb">~/.aws</code>
+整个遮掉——于是文档里那个例子产出一个<strong>没有任何凭据文件</strong>的沙箱。</li>
+<li><strong>继承的 <code class="nb">NO_PROXY</code> 让代理失效。</strong> 子环境是
+agent 的环境加上我们追加的，启动 shell 里的 <code class="nb">NO_PROXY</code>
+活了下来，所有认代理的客户端直接绕过。</li>
+<li><strong>测试脚手架在 CI 上跳过了自己，还报绿。</strong> 夜检的
+legacy 阶段用 <code class="nb">if ! server &amp; then</code>
+启动，而后台启动永远成功——取反永远为真，于是每次运行都打印
+"skipping"。本地是过的，因为我手动跑过那条分支。这一条是关于脚手架的，也是整组里最有教育意义的：<strong>带原因的
+skip 仍然是 skip，只有真实路径能证明任何事。</strong></li>
+</ul>
+<p>这些没有一个是单测发现的，而它们现在每个都有单测——但测试是在失败<strong>之后</strong>补的，对这类
+bug 来说这是唯一有效的顺序。发现它们的是把产品拼起来跑：一个带
+bubblewrap 的特权容器、一个真 agent、一个真控制面、一个
+CLI，和一个会报告"我收到了什么"的上游 TLS
+服务。这个脚手架（<code class="nb">hack/playground/run.sh</code>）现在每晚跑，头几次跑出四个
+bug，后来又出了两个。</p>
+<h2 id="升级以及唯一要紧的那一步">升级，以及唯一要紧的那一步</h2>
+<p>先 worker，再控制面，最后 agent。只有第一步是强制的：0.5 的 worker
+忽略策略字段，而这个控制面会回
+<code class="nb">409</code>，而不是造出一个看起来有墙的沙箱。<strong>不带策略</strong>的沙箱仍然可以调度到旧
+worker 上，所以分批滚没问题。</p>
+<p>迁移是加列（两张表各一个
+<code class="nb">ADD COLUMN … DEFAULT ''</code>），所以旧二进制仍然能读新二进制迁移过的库。这次发布的所有能力默认关闭：不动参数升级，行为与之前完全一致，包括
+agent 那条路径。</p>
+<p>对 import <code class="nb">pkg/…</code> 的人有三处 Go
+层破坏：<code class="nb">permission.AuditSink.Record</code> 多了一个参数，
+<code class="nb">PoderRepository</code> 多了
+<code class="nb">SelectBestFor</code>，<code class="nb">egress.Server.SOCKSURL()</code> 在
+unix socket 模式下返回 <code class="nb">""</code>。HTTP API、wire format、CLI
+都是纯新增。</p>
+<h2 id="还没做的事">还没做的事</h2>
+<ul>
+<li><strong>macOS 的 Seatbelt 没有验证过。</strong>
+在一个本身已被沙箱化的 shell 里没法应用这份 profile，而 MDM
+管着的开发者机器恰好就是这种情况。所以它挂在自己的探测后面，文档里标
+experimental。Linux 那边是对真实沙箱化进程验过的。</li>
+<li><strong>写保护路径是挂载，不是安全模型。</strong>
+硬链接到受保护文件写的是同一个 inode；同一条命令里先建
+<code class="nb">.git/hooks</code> 再写进去也仍然能成——保护从下一次 spawn
+生效。堵这两个要 Landlock。</li>
+<li><strong>终止隧道只谈
+HTTP/1.1</strong>，而且掩码不管上游把东西回显回来。</li>
+<li><strong>审计目前是日志，不是告警系统。</strong>
+它记录了哪个凭据去了哪个主机、哪条连接的 TLS
+被终止；但这些停止发生时，没有人会收到告警。</li>
+</ul>
+<p>发布在这里：<a
+href="https://github.com/sandrpod/sandrpod/releases/tag/v0.6.0">v0.6.0</a>，
+Linux / macOS / Windows 二进制，amd64 与 arm64 镜像，以及<a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/RELEASE_NOTES.md">发布说明</a>——同样的升级顺序、同样的边界。如果你试了之后觉得哪里读起来不对，各种失败形态都写在
+<a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/OS_SANDBOX.md">OS_SANDBOX.md</a>、
+<a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/EGRESS_POLICY.md">EGRESS_POLICY.md</a>
+和 <a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/CREDENTIALS.md">CREDENTIALS.md</a>
+里——包括还没能工作的那部分。</p>
+
+<div class="article-foot">SandrPod 是开源项目，Apache-2.0 — <a href="https://github.com/sandrpod/sandrpod">github.com/sandrpod/sandrpod</a>。<a href="/">更多文章</a>（英文）。</div>
+</article>
+</main>
+<footer>
+  <span>SandrPod — 自托管的 AI 智能体执行基础设施</span>
+  <a href="https://github.com/sandrpod/sandrpod">源码</a>
+  <a href="https://blog.sandrpod.com/feed.xml">RSS</a>
+  <a href="https://www.facebook.com/itscjzhao">Facebook</a>
+  <span>Apache-2.0</span>
+</footer>
+<script>
+(function () {
+  var btn = document.querySelector('.theme-toggle');
+  if (!btn) return;
+  var root = document.documentElement;
+  function current() {
+    return root.getAttribute('data-theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+  function label() { btn.textContent = current() === 'dark' ? btn.dataset.light : btn.dataset.dark; }
+  label();
+  btn.addEventListener('click', function () {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    label();
+  });
+})();
+</script>
+<script data-goatcounter="https://sandrpod.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

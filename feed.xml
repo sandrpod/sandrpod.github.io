@@ -20,5 +20,12 @@
       <pubDate>Thu, 06 Aug 2026 09:30:00 +0000</pubDate>
       <description>langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects, both of them mine, and a third thing that only looked like one.</description>
     </item>
+    <item>
+      <title>Three boundaries, and a credential that never enters the sandbox</title>
+      <link>https://blog.sandrpod.com/three-boundaries/</link>
+      <guid isPermaLink="true">https://blog.sandrpod.com/three-boundaries/</guid>
+      <pubDate>Sat, 25 Oct 2026 12:00:00 +0000</pubDate>
+      <description>An egress allow-list, an OS sandbox, and a credential the model cannot copy — the three boundaries 0.6.0 adds under the gate, and the six bugs that building them turned up, every one invisible to the layer that owned it.</description>
+    </item>
   </channel>
 </rss>

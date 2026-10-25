@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three boundaries, and a credential that never enters the sandbox — SandrPod</title>
+<meta name="description" content="An egress allow-list, an OS sandbox, and a credential the model cannot copy — the three boundaries 0.6.0 adds under the gate, and the six bugs that building them turned up, every one invisible to the layer that owned it.">
+<link rel="canonical" href="https://blog.sandrpod.com/three-boundaries/">
+<link rel="alternate" hreflang="en" href="https://blog.sandrpod.com/three-boundaries/">
+<link rel="alternate" hreflang="zh-Hans" href="https://blog.sandrpod.com/zh/three-boundaries/">
+<link rel="alternate" hreflang="x-default" href="https://blog.sandrpod.com/three-boundaries/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Three boundaries, and a credential that never enters the sandbox — SandrPod">
+<meta property="og:description" content="An egress allow-list, an OS sandbox, and a credential the model cannot copy — the three boundaries 0.6.0 adds under the gate, and the six bugs that building them turned up, every one invisible to the layer that owned it.">
+<meta property="og:url" content="https://blog.sandrpod.com/three-boundaries/">
+<meta property="og:site_name" content="SandrPod">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://blog.sandrpod.com/og/three-boundaries.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Three boundaries, and a credential that never enters the sandbox — SandrPod">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Three boundaries, and a credential that never enters the sandbox — SandrPod">
+<meta name="twitter:description" content="An egress allow-list, an OS sandbox, and a credential the model cannot copy — the three boundaries 0.6.0 adds under the gate, and the six bugs that building them turned up, every one invisible to the layer that owned it.">
+<meta name="twitter:image" content="https://blog.sandrpod.com/og/three-boundaries.png">
+<meta name="twitter:image:alt" content="Three boundaries, and a credential that never enters the sandbox — SandrPod">
+<link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Three boundaries, and a credential that never enters the sandbox", "description": "An egress allow-list, an OS sandbox, and a credential the model cannot copy — the three boundaries 0.6.0 adds under the gate, and the six bugs that building them turned up, every one invisible to the layer that owned it.", "inLanguage": "en", "image": ["https://blog.sandrpod.com/og/three-boundaries.png"], "datePublished": "2026-10-25", "dateModified": "2026-10-25", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/three-boundaries/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
+<script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead">
+  <a class="wordmark" href="/">SandrPod</a>
+  <nav aria-label="Main">
+    <a href="/">Writing</a>
+    <a href="https://github.com/sandrpod/sandrpod">GitHub</a>
+    <button class="theme-toggle" type="button" aria-label="Toggle colour theme" data-dark="Dark" data-light="Light">Dark</button>
+  </nav>
+</header>
+<main id="main">
+<article>
+<p class="lang-switch"><a href="https://blog.sandrpod.com/zh/three-boundaries/" lang="zh-Hans" hreflang="zh-Hans">中文版</a></p>
+<h1
+id="three-boundaries-and-a-credential-that-never-enters-the-sandbox">Three
+boundaries, and a credential that never enters the sandbox</h1>
+<p><em>0.5.x isolated a filesystem. 0.6.0 asks a harder question: what
+if the code simply does not go through the door you built?</em></p>
+<hr />
+<p>Every sandbox design has the same hole in the same place. You write a
+gate in front of the file API, and the agent calls <code class="nb">open(2)</code>
+instead. You put a proxy in front of the network, and the agent unsets
+<code class="nb">HTTP_PROXY</code>. The code you are running was written by a
+model, on your behalf, and it does not have to use your door.</p>
+<p>SandrPod 0.5.x had a good filesystem boundary: the toolbox API
+checked every path against a policy, and the hardlock list kept
+<code class="nb">~/.ssh</code> out of reach. It was honest about what that meant —
+<em>arbitrary code execution is not containable by the file API</em> —
+and then left the sentence hanging. This release finishes it. Not by
+making the gate cleverer, but by putting three things
+<em>underneath</em> it, each one enforced where the previous one cannot
+see.</p>
+<h2 id="boundary-one-who-you-may-reach">Boundary one: who you may
+reach</h2>
+<p>The first is an egress allow-list, and the interesting part is not
+the list — it is that there are three ways to hold it, and they fail
+differently:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Where the rules live</th>
+<th>When a tightened rule applies</th>
+<th>Server unreachable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="nb">-egress-mode=enforce</code></td>
+<td>a local file</td>
+<td>on restart</td>
+<td>fine</td>
+</tr>
+<tr>
+<td><code class="nb">-egress-mode=server</code></td>
+<td>both ends (polled copy)</td>
+<td>within <code class="nb">-egress-sync</code> (60s)</td>
+<td>keeps the last copy</td>
+</tr>
+<tr>
+<td><code class="nb">-egress-mode=decider</code></td>
+<td>the server only</td>
+<td>next connection (≤10s cache)</td>
+<td><strong>denies</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The third one exists because a policy you cannot revoke quickly is a
+policy you do not have. The cost is stated rather than spread out in
+footnotes: a decider that cannot answer is a denial. An unreachable
+policy server must not silently become an open proxy, and "we could not
+reach the rules" is not the same fact as "the rules say no" — the proxy
+reports them differently on purpose.</p>
+<p>Underneath the list sits one detail worth stealing from <a
+href="https://github.com/anthropics/sandbox-runtime">sandbox-runtime</a>:
+a name is resolved <strong>once</strong>, the address is vetted
+(loopback, link-local, cloud metadata, this host's own interfaces), and
+the vetted address is what gets dialled. The second DNS lookup is where
+the rebinding attack lives.</p>
+<p>Container sandboxes get the same policy through a different
+mechanism, because none of the above helps a process that ignores proxy
+environment variables: a per-pod <code class="nb">Internal: true</code> network
+plus an <code class="nb">egress-proxy</code> sidecar, so the container has no route
+except the proxy. Two deployments, one policy file, and the same answer
+to "may this host leave?".</p>
+<h2
+id="boundary-two-the-kernel-for-the-processes-that-ignore-you">Boundary
+two: the kernel, for the processes that ignore you</h2>
+<p>The second boundary is the one a model cannot walk around, because it
+is not an API. With <code class="nb">-os-sandbox</code>, every process the toolbox
+spawns runs inside bubblewrap (Linux) or Seatbelt (macOS) with the same
+shape:</p>
+<ul>
+<li><strong>a read-only root</strong>, so "write the key somewhere I can
+read later" has nowhere to land;</li>
+<li><strong>the hardlocks masked</strong> — <code class="nb">~/.ssh</code> is not
+off-limits to the file API, it is <em>not there</em>;</li>
+<li><strong>the persistence paths read-only</strong> —
+<code class="nb">.git/hooks</code>, <code class="nb">.git/config</code>, <code class="nb">.bashrc</code>,
+<code class="nb">.mcp.json</code>, IDE launch configs. These are the files whose
+only plausible purpose in an agent's work tree is to run again after the
+sandbox is gone;</li>
+<li><strong>capabilities dropped</strong>, and on Linux a
+<strong>network namespace</strong> whose only route out is the proxy —
+through a relay on loopback, because a namespace with no bridge cannot
+reach the proxy either.</li>
+</ul>
+<p>The network part took two attempts. The first put the sandbox in its
+own namespace and left it there, which is a wall with no door:
+<code class="nb">wget</code> could not resolve anything, including the proxy. The
+relay is the door — a few dozen lines that accept on
+<code class="nb">127.0.0.1</code> inside the namespace and forward to the proxy's
+unix socket, bound in from the host. It carries no policy of its own,
+deliberately: every byte still goes to the proxy, which is where the
+decision lives.</p>
+<p>The capability drop has a matching subtler decision.
+<code class="nb">--cap-drop ALL</code> is right until the agent runs as root, which
+is how a system service runs, and then it breaks the ordinary case of
+serving a user's home directory: root without
+<code class="nb">CAP_DAC_OVERRIDE</code> cannot read files owned by someone else.
+The release keeps exactly two capabilities for that case —
+<code class="nb">CAP_DAC_OVERRIDE</code> and <code class="nb">CAP_DAC_READ_SEARCH</code> — and
+keeps <code class="nb">CAP_SYS_ADMIN</code> gone, because that is the one that
+would <code class="nb">umount</code> every mask above it.</p>
+<h2 id="boundary-three-the-credential-the-agent-never-holds">Boundary
+three: the credential the agent never holds</h2>
+<p>The third is the one that made me rewrite a paragraph of
+documentation twice.</p>
+<p>An agent that can call a paid API needs a key. A key in its
+environment is a key it can print, send to a host the policy allows, and
+paste into a repository. So <code class="nb">-credential-mask</code> replaces the
+real value with <code class="nb">fake_value_&lt;uuid4&gt;</code> inside the
+sandbox, and substitutes it back at the proxy — over TLS the proxy
+terminates.</p>
+<p>That sentence is where the honesty has to start, because TLS
+termination is not a neutral act. For a terminated host, the certificate
+the sandbox sees is signed by <em>us</em>; pinning breaks, and mTLS to
+the upstream cannot work. What buys that is the only general answer to
+"use this key but do not let the model copy it": the real bytes exist in
+the proxy's memory and in the request it sends, nowhere the sandbox can
+reach. Hosts that need a real end-to-end channel go in
+<code>-credential-terminate-exclude</code> and get no masking — a trade,
+not an oversight — and a masked credential over plain HTTP is refused
+rather than leaked.</p>
+<p>Two implementation notes, because both are where this kind of feature
+usually rots. Substitution in a body is length-preserving, so
+<code class="nb">Content-Length</code> stays valid and the proxy never has to
+re-frame. And an AWS SigV4 request is <em>re-signed</em> with the real
+secret, because the signature is an HMAC over the whole request: a
+sentinel in the <code class="nb">Credential</code> scope is not a value you can
+swap in place. The re-signer is checked against AWS's published example
+signature, because a re-signer that is subtly wrong fails exactly like a
+wrong secret, and that is a bug that hides for months.</p>
+<h2 id="the-refusals-have-two-readers">The refusals have two
+readers</h2>
+<p>One small change that turned out to matter more than expected: every
+refusal now carries two explanations.</p>
+<pre><code>Reason:      路径 &quot;/Users/me/.ssh/id_rsa&quot; 被 hardlock 锁定（可用 sandrpod-tray unlock 解锁）
+ModelReason: /Users/me/.ssh/id_rsa is hard-locked by the operator&#39;s policy and cannot be
+             read or written; do not retry, and ask the user to unlock it in the tray if
+             this is genuinely needed</code></pre>
+<p>The first is for the person in the dialog. The second is for the
+model, and it is what the tool result returns — one line of English with
+what was refused and what to do instead. Both go into the audit record.
+The split is not cosmetic: a localized UI string handed to a model is
+noise it cannot act on, and an English imperative in a consent dialog
+reads as a bug to whoever has to click it.</p>
+<h2 id="the-fleet-has-to-agree-with-you">The fleet has to agree with
+you</h2>
+<p>A walled sandbox only means something if the machine that runs it can
+enforce the wall. A worker from before this release ignores the policy
+field entirely: it starts the container, reports <code class="nb">RUNNING</code>,
+and the API serves the policy back as if it were in force.</p>
+<p>So the worker now advertises what it can enforce on the tunnel
+handshake, and the control plane refuses to place a policy on a worker
+that does not advertise it:</p>
+<pre><code>409 worker capability unavailable: this sandbox asks for an egress policy, but
+1 online local worker(s) do not support it (upgrade the poder to a build that
+advertises &quot;egress&quot;, or drop the policy)</code></pre>
+<p>The agent gets the mirror image.
+<code class="nb">-egress-mode=server|decider</code> probe
+<code class="nb">GET /api/v1/capabilities</code> and refuse to start against a
+control plane that predates them, instead of running deny-all and
+looking like a network outage. A 404 on a route you invented for the
+purpose is unambiguous; a 404 on a sandbox record is not, and that
+difference is the whole design.</p>
+<h2 id="what-testing-this-actually-cost">What testing this actually
+cost</h2>
+<p>The parts above are the design. The bugs are the interesting part,
+and they share a property: every one of them was invisible to the layer
+that "owned" it.</p>
+<ul>
+<li><strong>The OS sandbox never ran through the product.</strong>
+<code class="nb">Resolve</code> returned <code class="nb">bwrap</code> as a bare name and the
+toolbox assigned it to <code class="nb">exec.Cmd.Path</code>; <code class="nb">execve</code>
+does no <code class="nb">PATH</code> lookup, so every <code class="nb">Execute</code> died
+with <code>fork/exec bwrap: no such file or directory</code>. The
+package's own tests passed because they call <code class="nb">Command()</code> and
+hand the result to <code class="nb">exec.Command</code>, which looks the name up
+itself. Found by a manual walkthrough, on its first command.</li>
+<li><strong>The PTY path never wrapped at all.</strong>
+<code class="nb">ProcManager.Start</code> returned from its PTY branch before the
+sandbox call, so an interactive session ran a shell completely outside
+bubblewrap — the one path the layer exists for.</li>
+<li><strong>Masked SigV4 requests were never re-signed.</strong> Header
+substitution rewrote the credential scope to the real access key before
+the re-signer looked for the sentinel, so the lookup missed and the
+request went out signed with a key id it did not match. Every masked AWS
+call would have failed with <code class="nb">SignatureDoesNotMatch</code>.</li>
+<li><strong>A masked credentials file inside a hardlocked directory was
+invisible.</strong> The substitution was mounted before the hardlock
+masks, and the default seeds hardlock <code class="nb">~/.aws</code> wholesale, so
+the documented example produced a sandbox with no credentials file at
+all.</li>
+<li><strong>An inherited <code class="nb">NO_PROXY</code> disabled the
+proxy.</strong> The child environment is the agent's environment plus
+ours, so a <code class="nb">NO_PROXY</code> from the launching shell survived, and
+every proxy-aware client went direct.</li>
+<li><strong>The test harness skipped itself on CI and still went
+green.</strong> The nightly's legacy phase is launched with
+<code class="nb">if ! server &amp; then</code>, and a background launch always
+succeeds — so the negation was always true and the phase printed
+"skipping" on every run. It passed locally because I had run that branch
+by hand. That one is about the harness, and it is the most instructive
+of the set: a skip with a reason is still a skip, and only the real path
+proves anything.</li>
+</ul>
+<p>None of these were found by unit tests, and all of them now have one
+— but the tests came <em>after</em> the failure, which is the only order
+that ever works for this class of bug. What found them was running the
+assembled product: a privileged container with bubblewrap, a real agent,
+a real control plane, a CLI, and an upstream TLS server that reports
+what it received. That harness (<code class="nb">hack/playground/run.sh</code>) now
+runs nightly, and its first few runs found four bugs, then two more.</p>
+<h2 id="upgrading-and-the-one-step-that-matters">Upgrading, and the one
+step that matters</h2>
+<p>Workers first, then the control plane, then agents. Only the first
+step is mandatory: a 0.5 worker ignores the policy field, and this
+control plane answers <code class="nb">409</code> rather than creating a sandbox
+that looks walled. A sandbox <em>without</em> a policy still schedules
+onto an old worker, so a staged rollout is fine.</p>
+<p>The migration is additive (<code class="nb">ADD COLUMN … DEFAULT ''</code> on
+two tables), so an old binary still reads a database a new one migrated.
+Everything in the release is off by default: a deployment that upgrades
+without touching flags behaves exactly as it did, including on the agent
+path.</p>
+<p>Three Go-level breaks for anyone importing <code class="nb">pkg/…</code>:
+<code class="nb">permission.AuditSink.Record</code> gained a parameter,
+<code class="nb">PoderRepository</code> gained <code class="nb">SelectBestFor</code>, and
+<code class="nb">egress.Server.SOCKSURL()</code> returns <code class="nb">""</code> in
+unix-socket mode. The HTTP API, the wire format and the CLI are
+additive.</p>
+<h2 id="what-is-still-not-done">What is still not done</h2>
+<ul>
+<li><strong>macOS Seatbelt is unverified.</strong> The profile cannot be
+applied from a shell that is itself already sandboxed, which is what an
+MDM-managed developer machine turns out to be, so it ships behind its
+probe and is documented as experimental. Linux is verified against real
+sandboxed processes.</li>
+<li><strong>The write-protected paths are mounts, not a security
+model.</strong> A hardlink to a protected file writes the same inode,
+and a command that creates <code class="nb">.git/hooks</code> and writes into it in
+the same breath wins — the protection applies from the next spawn.
+Closing those needs Landlock.</li>
+<li><strong>Terminated tunnels speak HTTP/1.1 only</strong>, and masking
+does not cover what an upstream echoes back.</li>
+<li><strong>The audit trail is a log, not an alerting system.</strong>
+It records which credential went where and which connection had its TLS
+terminated; nobody is paged when that stops.</li>
+</ul>
+<p>The release is <a
+href="https://github.com/sandrpod/sandrpod/releases/tag/v0.6.0">v0.6.0</a>:
+binaries for Linux, macOS and Windows, images for amd64 and arm64, and
+<a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/RELEASE_NOTES.md">the
+notes</a> with the same upgrade order and the same limits. If you try it
+and something reads wrong, the failure modes are described in <a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/OS_SANDBOX.md">OS_SANDBOX.md</a>,
+<a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/EGRESS_POLICY.md">EGRESS_POLICY.md</a>
+and <a
+href="https://github.com/sandrpod/sandrpod/blob/main/docs/CREDENTIALS.md">CREDENTIALS.md</a>
+— including the parts that do not work yet.</p>
+
+<div class="article-foot">SandrPod is open source, Apache-2.0 — <a href="https://github.com/sandrpod/sandrpod">github.com/sandrpod/sandrpod</a>. <a href="/">More writing</a>.</div>
+</article>
+</main>
+<footer>
+  <span>SandrPod — self-hosted execution infrastructure for AI agents</span>
+  <a href="https://github.com/sandrpod/sandrpod">Source</a>
+  <a href="https://blog.sandrpod.com/feed.xml">RSS</a>
+  <a href="https://www.facebook.com/itscjzhao">Facebook</a>
+  <span>Apache-2.0</span>
+</footer>
+<script>
+(function () {
+  var btn = document.querySelector('.theme-toggle');
+  if (!btn) return;
+  var root = document.documentElement;
+  function current() {
+    return root.getAttribute('data-theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+  function label() { btn.textContent = current() === 'dark' ? btn.dataset.light : btn.dataset.dark; }
+  label();
+  btn.addEventListener('click', function () {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    label();
+  });
+})();
+</script>
+<script data-goatcounter="https://sandrpod.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

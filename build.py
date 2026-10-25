@@ -48,6 +48,25 @@ POSTS = [
                  "of them mine, and a third thing that only looked like one.",
     },
     {
+        "src": "three-boundaries.md",
+        "slug": "three-boundaries",
+        "date": "2026-10-25",
+        "rfc822": "Sat, 25 Oct 2026 12:00:00 +0000",
+        "blurb": "An egress allow-list, an OS sandbox, and a credential the model "
+                 "cannot copy — the three boundaries 0.6.0 adds under the gate, and "
+                 "the six bugs that building them turned up, every one invisible to "
+                 "the layer that owned it.",
+    },
+    {
+        "src": "three-boundaries.zh.md",
+        "slug": "zh/three-boundaries",
+        "of": "three-boundaries",
+        "lang": "zh-Hans",
+        "date": "2026-10-25",
+        "blurb": "出网白名单、OS 沙箱、以及一把模型拷不走的钥匙——0.6.0 在门下面加的三层,"
+                 "以及造它们时冒出来的六个 bug,每一个对拥有它的那一层都是隐形的。",
+    },
+    {
         "src": "e2b-compatible-sandbox-api.zh.md",
         "slug": "zh/e2b-compatible-sandbox-api",
         "of": "e2b-compatible-sandbox-api",
