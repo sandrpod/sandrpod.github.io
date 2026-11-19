@@ -27,7 +27,7 @@
 <meta name="twitter:image:alt" content="从一台空服务器开始，自建一套兼容 E2B 的沙箱服务 — SandrPod">
 <link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
 <link rel="stylesheet" href="/style.css">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "从一台空服务器开始，自建一套兼容 E2B 的沙箱服务", "description": "一台机器、一个域名、四个容器——然后让未经修改的官方 E2B SDK 连上你自己的基础设施，并逐个功能验证。", "inLanguage": "zh-Hans", "image": ["https://blog.sandrpod.com/og/zh-e2b-compatible-sandbox-api.png"], "datePublished": "2026-09-21", "dateModified": "2026-09-21", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/zh/e2b-compatible-sandbox-api/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "从一台空服务器开始，自建一套兼容 E2B 的沙箱服务", "description": "一台机器、一个域名、四个容器——然后让未经修改的官方 E2B SDK 连上你自己的基础设施，并逐个功能验证。", "inLanguage": "zh-Hans", "image": ["https://blog.sandrpod.com/og/zh-e2b-compatible-sandbox-api.png"], "datePublished": "2026-09-21", "dateModified": "2026-11-19", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/zh/e2b-compatible-sandbox-api/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
 <script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
 </head>
 <body>
@@ -195,6 +195,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
 <pre class="yaml"><code>services:
   postgres:
     image: postgres:16-alpine
+    container_name: sandrpod-postgres
     environment:
       POSTGRES_USER: sandrpod
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
@@ -206,7 +207,8 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.5.5
+    image: ghcr.io/sandrpod/server:v0.12.0
+    container_name: sandrpod-server
     command:
       - &quot;-port=8080&quot;
       - &quot;-db=postgres://sandrpod:${POSTGRES_PASSWORD}@postgres:5432/sandrpod?sslmode=disable&quot;
@@ -216,39 +218,68 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
     ports:
       - &quot;127.0.0.1:8080:8080&quot;               # 管理 API，只绑回环
     networks: [sandrpod]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: [&quot;CMD&quot;, &quot;wget&quot;, &quot;-q&quot;, &quot;--spider&quot;, &quot;http://localhost:8080/health&quot;]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.5.5
-    volumes: [/var/run/docker.sock:/var/run/docker.sock]
+    image: ghcr.io/sandrpod/poder:v0.12.0
+    container_name: sandrpod-poder
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - poder-data:/var/lib/sandrpod      # 重建容器时保留 worker id
     environment:
       API_URL: http://server:8080
       SANDRPOD_TOKEN: ${SANDRPOD_TOKEN:?}
       REGION: local
       PROVIDER_TYPE: local
+      SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.0
     networks: [sandrpod]
+    depends_on:
+      server: {condition: service_healthy}
+    healthcheck:
+      test: [&quot;CMD&quot;, &quot;wget&quot;, &quot;-q&quot;, &quot;--spider&quot;, &quot;http://localhost:8080/health&quot;]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
   caddy:
     image: caddy:2-alpine
+    container_name: sandrpod-caddy
     ports: [&quot;80:80&quot;, &quot;443:443&quot;]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /etc/lego/certificates:/certs:ro
+      - caddy-data:/data
     networks: [sandrpod]
+
+volumes:
+  pgdata:
+  poder-data:
+  caddy-data:
 
 networks:
   sandrpod:
-    name: sandrpod          # ← 必须钉死，见下</code></pre>
+    name: sandrpod          # ← 钉死，见下</code></pre>
 <p>里面有四处是承重的。</p>
 <p><strong><code>SANDRPOD_TOKEN: ${SANDRPOD_TOKEN:?}</code>。</strong>
 那个 <code class="nb">:?</code> 让 Compose 在变量为空时拒绝启动。空 token
 意味着每个请求都以匿名管理员身份执行——在笔记本上还能活，在公网 IP
 上是灾难。起不来比起错了强。</p>
 <p><strong><code class="nb">SANDRPOD_NETWORK: sandrpod</code>，以及网络上的
-<code class="nb">name: sandrpod</code>。</strong> worker
-创建沙箱容器时把这个字符串原样传给 Docker
-API，所以它必须是网络的<strong>真实</strong> Docker 名字——而 Compose
-默认会给网络名加项目名前缀，除非你钉死。这个搞错了故障很恶心：沙箱创建成功、落在另一个网络上、每一次执行都挂到超时为止。</p>
+<code class="nb">name: sandrpod</code>。</strong> 这是 worker 的管理网络，也是
+egress sidecar 的出口腿。沙箱本身现在会拿到独立的
+<code class="nb">sandrpod-s-&lt;hash&gt;</code> 网桥，worker
+会自己接上去，所以沙箱数据面不再依赖这个值；钉死网络名仍然让
+<code class="nb">server</code>、<code class="nb">postgres</code> 的服务发现稳定。</p>
 <p><strong><code class="nb">REGION: local</code>。</strong> E2B 网关调度到
 <code class="nb">provider=local</code> / <code class="nb">region=local</code>
 这个本地底座上。一个注册成比如 <code class="nb">cn-guangzhou</code> 的 worker
@@ -366,7 +397,7 @@ written through the E2B SDK</code></pre>
 </tr>
 <tr>
 <td><code class="nb">get_info()</code></td>
-<td><code class="nb">state=running</code>，<code class="nb">envd_version=0.2.0</code>，cpu/内存有值</td>
+<td><code class="nb">state=running</code>，<code class="nb">envd_version=0.5.2</code>，cpu/内存有值</td>
 </tr>
 <tr>
 <td><code class="nb">set_timeout(600)</code></td>
@@ -473,8 +504,8 @@ HTTP 的调试监听端口——请求根本不经过
 <p>三个都在 <strong>v0.5.2</strong>
 修掉了，每个都配了回归测试，并且确认过把修复回滚后测试会失败。这是"为什么要在真实域名上做这件事而不是在笔记本上"最诚实的论据：调试监听端口只能告诉你协议实现了，只有通配符
 Host 路由能告诉你它实现得<strong>对</strong>。</p>
-<h3 id="还没有的">还没有的</h3>
-<p>如实列出来，因为在集成的时候才发现更糟：</p>
+<h3 id="快照fork-和创建时的-envvars">快照、fork 和创建时的 envVars</h3>
+<p>这些在 <strong>v0.12.0</strong> 已经落地，配套扫描也会走到：</p>
 <table>
 <thead>
 <tr>
@@ -484,25 +515,26 @@ Host 路由能告诉你它实现得<strong>对</strong>。</p>
 </thead>
 <tbody>
 <tr>
-<td><code class="nb">create_snapshot()</code></td>
-<td><code class="nb">405</code> —— 未实现</td>
+<td><code class="nb">create_snapshot()</code> / <code class="nb">list_snapshots()</code> /
+<code class="nb">delete_snapshot()</code></td>
+<td>支持；快照是 worker 镜像，会同时清掉本地 tag 和 registry 副本</td>
 </tr>
 <tr>
 <td><code class="nb">fork()</code></td>
-<td><code class="nb">405</code> —— 未实现</td>
+<td>支持；先给源沙箱做快照，再启动请求的数量，逐项返回成功/失败</td>
 </tr>
 <tr>
 <td>创建时的 <code class="nb">envVars</code></td>
-<td>接受，但真实 SDK 还没有走到这条路径</td>
+<td>落到容器环境，命令、PTY 和代码解释器内核都会继承</td>
 </tr>
 </tbody>
 </table>
-<p><code class="nb">get_mcp_url()</code> 和 <code class="nb">download_url()</code>
-确实返回格式正确的 URL
-（<code>50005-&lt;id&gt;.&lt;domain&gt;/mcp</code> 和
-<code>49983-&lt;id&gt;.&lt;domain&gt;/files?path=…</code>）；这轮扫描只验证了它们能被生成，没有验证每一个消费方都能用。</p>
-<p><strong>总计 50 项检查，48 项通过。</strong> 两项失败就是上面那两个
-405。</p>
+<p><code class="nb">get_mcp_url()</code> 返回
+<code>50005-&lt;id&gt;.&lt;domain&gt;/mcp</code>；引擎的线上测试现在还会初始化这个端点并通过它调用工具。<code class="nb">download_url()</code>
+返回 <code>49983-&lt;id&gt;.&lt;domain&gt;/files?path=…</code>，签名 URL
+不带请求头也能取。</p>
+<p>对你的部署跑 <code class="nb">e2b_sweep.py</code> 会得到当前通过数；旧的 405
+项已经没有了。</p>
 <hr />
 <h2 id="六长期养着它要付出什么">六、长期养着它要付出什么</h2>
 <p>一台机器。这套栈空转时是四个容器；沙箱是按需创建的 Docker

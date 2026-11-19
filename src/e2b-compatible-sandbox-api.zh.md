@@ -212,6 +212,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: sandrpod-postgres
     environment:
       POSTGRES_USER: sandrpod
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
@@ -223,7 +224,8 @@ services:
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.5.5
+    image: ghcr.io/sandrpod/server:v0.12.0
+    container_name: sandrpod-server
     command:
       - "-port=8080"
       - "-db=postgres://sandrpod:${POSTGRES_PASSWORD}@postgres:5432/sandrpod?sslmode=disable"
@@ -233,29 +235,57 @@ services:
     ports:
       - "127.0.0.1:8080:8080"               # 管理 API，只绑回环
     networks: [sandrpod]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.5.5
-    volumes: [/var/run/docker.sock:/var/run/docker.sock]
+    image: ghcr.io/sandrpod/poder:v0.12.0
+    container_name: sandrpod-poder
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - poder-data:/var/lib/sandrpod      # 重建容器时保留 worker id
     environment:
       API_URL: http://server:8080
       SANDRPOD_TOKEN: ${SANDRPOD_TOKEN:?}
       REGION: local
       PROVIDER_TYPE: local
+      SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.0
     networks: [sandrpod]
+    depends_on:
+      server: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
   caddy:
     image: caddy:2-alpine
+    container_name: sandrpod-caddy
     ports: ["80:80", "443:443"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /etc/lego/certificates:/certs:ro
+      - caddy-data:/data
     networks: [sandrpod]
+
+volumes:
+  pgdata:
+  poder-data:
+  caddy-data:
 
 networks:
   sandrpod:
-    name: sandrpod          # ← 必须钉死，见下
+    name: sandrpod          # ← 钉死，见下
 ```
 
 里面有四处是承重的。
@@ -264,10 +294,10 @@ networks:
 拒绝启动。空 token 意味着每个请求都以匿名管理员身份执行——在笔记本上还能活，
 在公网 IP 上是灾难。起不来比起错了强。
 
-**`SANDRPOD_NETWORK: sandrpod`，以及网络上的 `name: sandrpod`。** worker 创建
-沙箱容器时把这个字符串原样传给 Docker API，所以它必须是网络的**真实** Docker
-名字——而 Compose 默认会给网络名加项目名前缀，除非你钉死。这个搞错了故障很恶心：
-沙箱创建成功、落在另一个网络上、每一次执行都挂到超时为止。
+**`SANDRPOD_NETWORK: sandrpod`，以及网络上的 `name: sandrpod`。** 这是 worker
+的管理网络，也是 egress sidecar 的出口腿。沙箱本身现在会拿到独立的
+`sandrpod-s-<hash>` 网桥，worker 会自己接上去，所以沙箱数据面不再依赖这个值；
+钉死网络名仍然让 `server`、`postgres` 的服务发现稳定。
 
 **`REGION: local`。** E2B 网关调度到 `provider=local` / `region=local` 这个本地
 底座上。一个注册成比如 `cn-guangzhou` 的 worker 会被调度器过滤掉，于是
@@ -382,7 +412,7 @@ written through the E2B SDK
 |---|---|
 | `Sandbox.create()` | `e2b6c1b0f2b8a72dd40`，2.9 秒 |
 | `is_running()` | `True` |
-| `get_info()` | `state=running`，`envd_version=0.2.0`，cpu/内存有值 |
+| `get_info()` | `state=running`，`envd_version=0.5.2`，cpu/内存有值 |
 | `set_timeout(600)` | 正常——映射到沙箱的闲置 TTL |
 | `Sandbox.list()` | 能找到 |
 | `Sandbox.list(query=SandboxQuery(metadata={...}))` | 能找到——metadata 能往返也能过滤 |
@@ -507,21 +537,21 @@ get_metrics()  →  1 个采样, cpu=0%, mem=1044590592
 失败。这是"为什么要在真实域名上做这件事而不是在笔记本上"最诚实的论据：调试
 监听端口只能告诉你协议实现了，只有通配符 Host 路由能告诉你它实现得**对**。
 
-### 还没有的
+### 快照、fork 和创建时的 envVars
 
-如实列出来，因为在集成的时候才发现更糟：
+这些在 **v0.12.0** 已经落地，配套扫描也会走到：
 
 | 调用 | 状态 |
 |---|---|
-| `create_snapshot()` | `405` —— 未实现 |
-| `fork()` | `405` —— 未实现 |
-| 创建时的 `envVars` | 接受，但真实 SDK 还没有走到这条路径 |
+| `create_snapshot()` / `list_snapshots()` / `delete_snapshot()` | 支持；快照是 worker 镜像，会同时清掉本地 tag 和 registry 副本 |
+| `fork()` | 支持；先给源沙箱做快照，再启动请求的数量，逐项返回成功/失败 |
+| 创建时的 `envVars` | 落到容器环境，命令、PTY 和代码解释器内核都会继承 |
 
-`get_mcp_url()` 和 `download_url()` 确实返回格式正确的 URL
-（`50005-<id>.<domain>/mcp` 和 `49983-<id>.<domain>/files?path=…`）；这轮扫描
-只验证了它们能被生成，没有验证每一个消费方都能用。
+`get_mcp_url()` 返回 `50005-<id>.<domain>/mcp`；引擎的线上测试现在还会初始化
+这个端点并通过它调用工具。`download_url()` 返回
+`49983-<id>.<domain>/files?path=…`，签名 URL 不带请求头也能取。
 
-**总计 50 项检查，48 项通过。** 两项失败就是上面那两个 405。
+对你的部署跑 `e2b_sweep.py` 会得到当前通过数；旧的 405 项已经没有了。
 
 ---
 

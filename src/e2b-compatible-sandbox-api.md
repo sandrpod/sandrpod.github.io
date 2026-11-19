@@ -213,6 +213,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: sandrpod-postgres
     environment:
       POSTGRES_USER: sandrpod
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
@@ -224,7 +225,8 @@ services:
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.5.5
+    image: ghcr.io/sandrpod/server:v0.12.0
+    container_name: sandrpod-server
     command:
       - "-port=8080"
       - "-db=postgres://sandrpod:${POSTGRES_PASSWORD}@postgres:5432/sandrpod?sslmode=disable"
@@ -234,25 +236,53 @@ services:
     ports:
       - "127.0.0.1:8080:8080"               # admin API, loopback only
     networks: [sandrpod]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.5.5
-    volumes: [/var/run/docker.sock:/var/run/docker.sock]
+    image: ghcr.io/sandrpod/poder:v0.12.0
+    container_name: sandrpod-poder
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - poder-data:/var/lib/sandrpod      # keeps the worker id across recreates
     environment:
       API_URL: http://server:8080
       SANDRPOD_TOKEN: ${SANDRPOD_TOKEN:?}
       REGION: local
       PROVIDER_TYPE: local
+      SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.0
     networks: [sandrpod]
+    depends_on:
+      server: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
   caddy:
     image: caddy:2-alpine
+    container_name: sandrpod-caddy
     ports: ["80:80", "443:443"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /etc/lego/certificates:/certs:ro
+      - caddy-data:/data
     networks: [sandrpod]
+
+volumes:
+  pgdata:
+  poder-data:
+  caddy-data:
 
 networks:
   sandrpod:
@@ -266,12 +296,11 @@ start when the variable is empty. An empty token means every request runs as an
 anonymous admin, which is survivable on a laptop and catastrophic on a public
 IP. Failing to boot is better than booting wrong.
 
-**`SANDRPOD_NETWORK: sandrpod`, and `name: sandrpod` on the network.** The worker
-passes that string straight to the Docker API when it creates sandbox
-containers, so it must be the network's *real* Docker name — and Compose prefixes
-network names with the project name unless you pin them. Get this wrong and the
-failure is nasty: sandboxes are created successfully, land on a different
-network, and every exec hangs until it times out.
+**`SANDRPOD_NETWORK: sandrpod`, and `name: sandrpod` on the network.** This is
+the worker's management network and the egress proxy's outbound leg. Sandboxes
+themselves get a private per-sandbox bridge (`sandrpod-s-<hash>`) and the worker
+attaches itself to it, so the sandbox data path no longer depends on this value;
+pinning the network name still keeps service DNS (`server`, `postgres`) stable.
 
 **`REGION: local`.** The E2B gateway schedules onto `provider=local` /
 `region=local` for the local substrate. A worker registered as, say,
@@ -391,7 +420,7 @@ above. Every row below really executed.
 |---|---|
 | `Sandbox.create()` | `e2b6c1b0f2b8a72dd40` in 2.9 s |
 | `is_running()` | `True` |
-| `get_info()` | `state=running`, `envd_version=0.2.0`, cpu/mem populated |
+| `get_info()` | `state=running`, `envd_version=0.5.2`, cpu/mem populated |
 | `set_timeout(600)` | ok — maps to the sandbox's idle TTL |
 | `Sandbox.list()` | found |
 | `Sandbox.list(query=SandboxQuery(metadata={...}))` | found — metadata round-trips and filters |
@@ -523,21 +552,23 @@ this exercise on a real domain rather than a laptop: the debug listener will
 tell you the protocol is implemented; only the wildcard host router tells you it
 is *correct*.
 
-### Not implemented
+### Snapshots, fork, and create-time envs
 
-Reported plainly, because finding out at integration time is worse:
+These landed in **v0.12.0** and are now exercised by the companion sweep:
 
 | Call | Status |
 |---|---|
-| `create_snapshot()` | `405` — not implemented |
-| `fork()` | `405` — not implemented |
-| `envVars` on create | accepted, but not exercised by the real SDK yet |
+| `create_snapshot()` / `list_snapshots()` / `delete_snapshot()` | supported; a snapshot is a worker image and is removed from both the local tag and the registry copy |
+| `fork()` | supported; it snapshots the source and starts the requested count, returning per-item success/error |
+| `envVars` on create | applied to the container, so commands, PTY and the code-interpreter kernel inherit them |
 
-`get_mcp_url()` and `download_url()` do return well-formed URLs
-(`50005-<id>.<domain>/mcp` and `49983-<id>.<domain>/files?path=…`); this sweep
-only checked that they are produced, not that every consumer of them works.
+`get_mcp_url()` returns `50005-<id>.<domain>/mcp`; the engine's live suite now
+also initializes that endpoint and calls a tool through it. `download_url()`
+returns `49983-<id>.<domain>/files?path=…` and the signed URL is fetched without
+a header.
 
-**Total: 50 checks, 48 passing.** The two failures are the 405s above.
+Run `e2b_sweep.py` against your deployment for the current pass/fail count; the
+old 405 rows are gone.
 
 ---
 
