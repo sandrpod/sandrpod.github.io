@@ -207,7 +207,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.12.0
+    image: ghcr.io/sandrpod/server:v0.12.1
     container_name: sandrpod-server
     command:
       - &quot;-port=8080&quot;
@@ -228,7 +228,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.12.0
+    image: ghcr.io/sandrpod/poder:v0.12.1
     container_name: sandrpod-poder
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -240,7 +240,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       PROVIDER_TYPE: local
       SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
-      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.0
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.1
     networks: [sandrpod]
     depends_on:
       server: {condition: service_healthy}
@@ -505,7 +505,7 @@ HTTP 的调试监听端口——请求根本不经过
 修掉了，每个都配了回归测试，并且确认过把修复回滚后测试会失败。这是"为什么要在真实域名上做这件事而不是在笔记本上"最诚实的论据：调试监听端口只能告诉你协议实现了，只有通配符
 Host 路由能告诉你它实现得<strong>对</strong>。</p>
 <h3 id="快照fork-和创建时的-envvars">快照、fork 和创建时的 envVars</h3>
-<p>这些在 <strong>v0.12.0</strong> 已经落地，配套扫描也会走到：</p>
+<p>这些在 <strong>v0.12.1</strong> 已经落地，配套扫描也会走到：</p>
 <table>
 <thead>
 <tr>
