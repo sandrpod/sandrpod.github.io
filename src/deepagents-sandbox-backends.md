@@ -27,9 +27,13 @@ Versions throughout: `deepagents` 0.6.12, `langchain-e2b` 0.0.6,
 measured against. v0.5.4 and v0.5.5 followed with resource-leak fixes, neither
 of which changes any behaviour measured here.
 
-Re-run on **v0.12.1** (2026-11-19): both backend sweeps still pass **12/12**,
-with the same output differences. The agent timings in the table remain the
-v0.5.3 measurement — that half was not re-run.
+Re-run on **v0.13.3** (2026-11-20): the native route (`langchain-sandrpod`)
+still passes **12/12** against a local v0.13.3 deployment, with the same output
+differences. The E2B route was not re-run in this pass — it needs a deployment
+with a TLS domain for `E2B_DOMAIN` (the SDK builds `<port>-<sandbox>.<domain>`
+itself), which was not stood up this time; its last run was the v0.12.1 pass,
+where both routes were 12/12. The agent timings in the table remain the v0.5.3
+measurement.
 
 ---
 

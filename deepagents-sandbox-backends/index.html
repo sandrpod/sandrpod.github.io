@@ -24,7 +24,7 @@
 <meta name="twitter:image:alt" content="Two ways to give a deepagents agent a sandbox you own — SandrPod">
 <link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
 <link rel="stylesheet" href="/style.css">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Two ways to give a deepagents agent a sandbox you own", "description": "langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects, both of them mine, and a third thing that only looked like one.", "inLanguage": "en", "image": ["https://blog.sandrpod.com/og/deepagents-sandbox-backends.png"], "datePublished": "2026-08-06", "dateModified": "2026-11-19", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/deepagents-sandbox-backends/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Two ways to give a deepagents agent a sandbox you own", "description": "langchain-e2b and langchain-sandrpod, same twelve assertions down each path. Both pass. Testing both is what found two defects, both of them mine, and a third thing that only looked like one.", "inLanguage": "en", "image": ["https://blog.sandrpod.com/og/deepagents-sandbox-backends.png"], "datePublished": "2026-08-06", "dateModified": "2026-11-20", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/deepagents-sandbox-backends/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
 <script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
 </head>
 <body>
@@ -70,10 +70,15 @@ that looked like a defect until I read the source.</p>
 SandrPod v0.5.3 — the version these numbers were measured against.
 v0.5.4 and v0.5.5 followed with resource-leak fixes, neither of which
 changes any behaviour measured here.</p>
-<p>Re-run on <strong>v0.12.1</strong> (2026-11-19): both backend sweeps
-still pass <strong>12/12</strong>, with the same output differences. The
-agent timings in the table remain the v0.5.3 measurement — that half was
-not re-run.</p>
+<p>Re-run on <strong>v0.13.3</strong> (2026-11-20): the native route
+(<code class="nb">langchain-sandrpod</code>) still passes <strong>12/12</strong>
+against a local v0.13.3 deployment, with the same output differences.
+The E2B route was not re-run in this pass — it needs a deployment with a
+TLS domain for <code class="nb">E2B_DOMAIN</code> (the SDK builds
+<code>&lt;port&gt;-&lt;sandbox&gt;.&lt;domain&gt;</code> itself), which
+was not stood up this time; its last run was the v0.12.1 pass, where
+both routes were 12/12. The agent timings in the table remain the v0.5.3
+measurement.</p>
 <hr />
 <h2 id="the-two-wirings">The two wirings</h2>
 <p><strong>Route 1 — through E2B's backend.</strong> You build a normal
