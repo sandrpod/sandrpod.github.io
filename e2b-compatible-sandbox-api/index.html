@@ -27,7 +27,7 @@
 <meta name="twitter:image:alt" content="Self-hosting an E2B-compatible sandbox stack, from an empty server — SandrPod">
 <link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
 <link rel="stylesheet" href="/style.css">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Self-hosting an E2B-compatible sandbox stack, from an empty server", "description": "One VM, one domain, four containers — then the unmodified E2B SDK talking to infrastructure you own, checked feature by feature.", "inLanguage": "en", "image": ["https://blog.sandrpod.com/og/e2b-compatible-sandbox-api.png"], "datePublished": "2026-08-06", "dateModified": "2026-11-20", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/e2b-compatible-sandbox-api/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Self-hosting an E2B-compatible sandbox stack, from an empty server", "description": "One VM, one domain, four containers — then the unmodified E2B SDK talking to infrastructure you own, checked feature by feature.", "inLanguage": "en", "image": ["https://blog.sandrpod.com/og/e2b-compatible-sandbox-api.png"], "datePublished": "2026-08-06", "dateModified": "2026-11-19", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/e2b-compatible-sandbox-api/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
 <script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
 </head>
 <body>
@@ -219,7 +219,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.13.0
+    image: ghcr.io/sandrpod/server:v0.12.1
     container_name: sandrpod-server
     command:
       - &quot;-port=8080&quot;
@@ -240,7 +240,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.13.0
+    image: ghcr.io/sandrpod/poder:v0.12.1
     container_name: sandrpod-poder
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -252,7 +252,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       PROVIDER_TYPE: local
       SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
-      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.13.0
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.1
     networks: [sandrpod]
     depends_on:
       server: {condition: service_healthy}
@@ -541,7 +541,7 @@ implemented; only the wildcard host router tells you it is
 <em>correct</em>.</p>
 <h3 id="snapshots-fork-and-create-time-envs">Snapshots, fork, and
 create-time envs</h3>
-<p>These landed in <strong>v0.13.0</strong> and are now exercised by the
+<p>These landed in <strong>v0.12.1</strong> and are now exercised by the
 companion sweep:</p>
 <table>
 <thead>

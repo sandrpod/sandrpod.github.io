@@ -2,7 +2,7 @@
 
 *0.5.x isolated a filesystem. 0.6.0 asks a harder question: what if the code simply does not go through the door you built?*
 
-*Re-verified on 2026-11-19 against v0.13.0: `hack/playground/run.sh` still passes gate, kernel, netns, egress, masking and audit.*
+*Re-verified on 2026-11-19 against v0.12.1: `hack/playground/run.sh` still passes gate, kernel, netns, egress, masking and audit.*
 
 ---
 

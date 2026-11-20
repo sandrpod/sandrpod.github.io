@@ -225,7 +225,7 @@ services:
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.13.0
+    image: ghcr.io/sandrpod/server:v0.12.1
     container_name: sandrpod-server
     command:
       - "-port=8080"
@@ -246,7 +246,7 @@ services:
       start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.13.0
+    image: ghcr.io/sandrpod/poder:v0.12.1
     container_name: sandrpod-poder
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -258,7 +258,7 @@ services:
       PROVIDER_TYPE: local
       SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
-      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.13.0
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.1
     networks: [sandrpod]
     depends_on:
       server: {condition: service_healthy}
@@ -554,7 +554,7 @@ is *correct*.
 
 ### Snapshots, fork, and create-time envs
 
-These landed in **v0.13.0** and are now exercised by the companion sweep:
+These landed in **v0.12.1** and are now exercised by the companion sweep:
 
 | Call | Status |
 |---|---|
