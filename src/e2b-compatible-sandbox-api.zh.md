@@ -224,7 +224,7 @@ services:
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.12.1
+    image: ghcr.io/sandrpod/server:v0.13.0
     container_name: sandrpod-server
     command:
       - "-port=8080"
@@ -245,7 +245,7 @@ services:
       start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.12.1
+    image: ghcr.io/sandrpod/poder:v0.13.0
     container_name: sandrpod-poder
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -257,7 +257,7 @@ services:
       PROVIDER_TYPE: local
       SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
-      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.1
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.13.0
     networks: [sandrpod]
     depends_on:
       server: {condition: service_healthy}
@@ -539,7 +539,7 @@ get_metrics()  →  1 个采样, cpu=0%, mem=1044590592
 
 ### 快照、fork 和创建时的 envVars
 
-这些在 **v0.12.1** 已经落地，配套扫描也会走到：
+这些在 **v0.13.0** 已经落地，配套扫描也会走到：
 
 | 调用 | 状态 |
 |---|---|
