@@ -36,6 +36,10 @@ AI Agent 会写代码，那些代码总得找个地方跑。
 底下所有内容都是在一台全新的 CentOS Stream 10 机器上从头跑完的，输出是真的，
 包括失败的部分。
 
+**2026-11-21** 在 **v0.13.3** 上复验：从一台空的阿里云香港虚拟机
+（Ubuntu 22.04）加一个三级域名从头跑，配套扫描 **38/38** 通过，包含快照/fork
+与新增的接口。
+
 ---
 
 ## 一、先看形状
@@ -224,7 +228,7 @@ services:
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.12.1
+    image: ghcr.io/sandrpod/server:v0.13.3
     container_name: sandrpod-server
     command:
       - "-port=8080"
@@ -245,7 +249,7 @@ services:
       start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.12.1
+    image: ghcr.io/sandrpod/poder:v0.13.3
     container_name: sandrpod-poder
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -257,7 +261,7 @@ services:
       PROVIDER_TYPE: local
       SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
-      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.1
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.13.3
     networks: [sandrpod]
     depends_on:
       server: {condition: service_healthy}

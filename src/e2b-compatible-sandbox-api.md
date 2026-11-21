@@ -26,6 +26,10 @@ what does not exist yet.
 Everything below was run start to finish on a fresh CentOS Stream 10 VM. The
 outputs are real, including the failures.
 
+Re-verified on **2026-11-21** against **v0.13.3**, from an empty Alibaba Cloud
+Hong Kong VM (Ubuntu 22.04) and a third-level domain: the companion sweep passes
+**38/38**, snapshots/fork and the newer calls included.
+
 ---
 
 ## 1. The shape of the thing
@@ -225,7 +229,7 @@ services:
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.12.1
+    image: ghcr.io/sandrpod/server:v0.13.3
     container_name: sandrpod-server
     command:
       - "-port=8080"
@@ -246,7 +250,7 @@ services:
       start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.12.1
+    image: ghcr.io/sandrpod/poder:v0.13.3
     container_name: sandrpod-poder
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -258,7 +262,7 @@ services:
       PROVIDER_TYPE: local
       SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
-      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.1
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.13.3
     networks: [sandrpod]
     depends_on:
       server: {condition: service_healthy}

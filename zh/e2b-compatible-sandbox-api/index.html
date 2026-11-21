@@ -27,7 +27,7 @@
 <meta name="twitter:image:alt" content="从一台空服务器开始，自建一套兼容 E2B 的沙箱服务 — SandrPod">
 <link rel="alternate" type="application/rss+xml" title="SandrPod" href="https://blog.sandrpod.com/feed.xml">
 <link rel="stylesheet" href="/style.css">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "从一台空服务器开始，自建一套兼容 E2B 的沙箱服务", "description": "一台机器、一个域名、四个容器——然后让未经修改的官方 E2B SDK 连上你自己的基础设施，并逐个功能验证。", "inLanguage": "zh-Hans", "image": ["https://blog.sandrpod.com/og/zh-e2b-compatible-sandbox-api.png"], "datePublished": "2026-09-21", "dateModified": "2026-11-20", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/zh/e2b-compatible-sandbox-api/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "从一台空服务器开始，自建一套兼容 E2B 的沙箱服务", "description": "一台机器、一个域名、四个容器——然后让未经修改的官方 E2B SDK 连上你自己的基础设施，并逐个功能验证。", "inLanguage": "zh-Hans", "image": ["https://blog.sandrpod.com/og/zh-e2b-compatible-sandbox-api.png"], "datePublished": "2026-09-21", "dateModified": "2026-11-21", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://blog.sandrpod.com/zh/e2b-compatible-sandbox-api/"}, "author": {"@type": "Organization", "name": "SandrPod", "url": "https://github.com/sandrpod/sandrpod"}, "publisher": {"@type": "Organization", "name": "SandrPod", "url": "https://blog.sandrpod.com/"}}</script>
 <script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
 </head>
 <body>
@@ -74,6 +74,10 @@ TLS
 连上来。最后逐个函数地跑一遍客户端接口，如实报告哪些能用、哪些有差异、哪些还没有。</p>
 <p>底下所有内容都是在一台全新的 CentOS Stream 10
 机器上从头跑完的，输出是真的，包括失败的部分。</p>
+<p><strong>2026-11-21</strong> 在 <strong>v0.13.3</strong>
+上复验：从一台空的阿里云香港虚拟机（Ubuntu
+22.04）加一个三级域名从头跑，配套扫描 <strong>38/38</strong>
+通过，包含快照/fork 与新增的接口。</p>
 <hr />
 <h2 id="一先看形状">一、先看形状</h2>
 <p>E2B 的架构是：一个你通过 REST 访问的控制平面，加上每个沙箱里一个叫
@@ -207,7 +211,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       interval: 5s
 
   server:
-    image: ghcr.io/sandrpod/server:v0.12.1
+    image: ghcr.io/sandrpod/server:v0.13.3
     container_name: sandrpod-server
     command:
       - &quot;-port=8080&quot;
@@ -228,7 +232,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       start_period: 3s
 
   poder:
-    image: ghcr.io/sandrpod/poder:v0.12.1
+    image: ghcr.io/sandrpod/poder:v0.13.3
     container_name: sandrpod-poder
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -240,7 +244,7 @@ ExecStartPost=-/usr/bin/docker kill --signal=SIGUSR1 sandrpod-caddy</code></pre>
       PROVIDER_TYPE: local
       SANDRPOD_E2B_DOMAIN: example.com
       SANDRPOD_NETWORK: sandrpod
-      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.12.1
+      SANDRPOD_TOOLBOX_IMAGE: ghcr.io/sandrpod/toolbox:v0.13.3
     networks: [sandrpod]
     depends_on:
       server: {condition: service_healthy}
